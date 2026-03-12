@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
-import { Spin } from "antd";
-import { UserAddOutlined, UserOutlined, TeamOutlined } from "@ant-design/icons";
+import { useEffect, useState, useCallback } from "react";
+import { Spin, Select } from "antd";
+import {
+  UserAddOutlined,
+  UserOutlined,
+  TeamOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
@@ -12,34 +17,78 @@ interface User {
   lavozim: string;
   boshqarma_nomi: string;
   is_active: boolean;
+  avatar?: string;
 }
+
+interface PaginatedResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: User[];
+}
+
+const LAVOZIM_OPTIONS = [
+  { value: "", label: "Barcha lavozimlar" },
+  { value: "rais", label: "Boshqaruv Raisi" },
+  { value: "rais_orinbosari", label: "Rais O'rinbosari" },
+  { value: "boshqarma_boshi", label: "Boshqarma Boshlig'i" },
+  { value: "pto", label: "PTO xodimi" },
+  { value: "iqtisod", label: "Iqtisodchi" },
+  { value: "buxgalter", label: "Buxgalter" },
+  { value: "kadr", label: "Kadrlar xodimi" },
+  { value: "uchastka_rahbari", label: "Uchastka rahbari" },
+  { value: "xodim", label: "Oddiy xodim" },
+];
+
+const PAGE_SIZE = 10;
 
 const XodimlarPage = () => {
   const [data, setData] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const [totalCount, setTotalCount] = useState(0);
+  const [search, setSearch] = useState("");
+  const [lavozim, setLavozim] = useState("");
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  const fetchUsers = async () => {
+  // Debounce: reset to page 1 when search changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get(API_ENDPOINTS.USERS.LIST);
+      const params: Record<string, string | number> = { page };
+      if (search) params.search = search;
+      if (lavozim) params.lavozim = lavozim;
+
+      const res = await api.get<PaginatedResponse>(API_ENDPOINTS.USERS.LIST, {
+        params,
+      });
       setData(res.data.results);
+      setTotalCount(res.data.count);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, lavozim]);
 
-  const paginated = data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const totalPages = Math.ceil(data.length / PAGE_SIZE);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleLavozimChange = (val: string) => {
+    setPage(1);
+    setLavozim(val);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
@@ -53,10 +102,10 @@ const XodimlarPage = () => {
             Xodimlar ro'yxati
           </h1>
           <div className="flex items-center gap-3">
-            {data.length > 0 && (
+            {totalCount > 0 && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">
                 <TeamOutlined className="text-[11px]" />
-                {data.length} ta xodim
+                {totalCount} ta xodim
               </span>
             )}
             <button
@@ -68,6 +117,41 @@ const XodimlarPage = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <SearchOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Xodim qidirish..."
+            className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent transition"
+          />
+        </div>
+
+        <Select
+          value={lavozim ?? ""}
+          onChange={(value) => handleLavozimChange(value ?? "")}
+          options={LAVOZIM_OPTIONS}
+          className="min-w-[220px] py-1.5! rounded-xl!"
+          size="middle"
+        />
+
+        {(search || lavozim) && (
+          <button
+            onClick={() => {
+              setSearch("");
+              setLavozim("");
+              setPage(1);
+            }}
+            className="px-3 py-2 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+          >
+            Tozalash ✕
+          </button>
+        )}
       </div>
 
       {/* Table card */}
@@ -82,7 +166,9 @@ const XodimlarPage = () => {
               <TeamOutlined className="text-slate-300 text-xl" />
             </div>
             <p className="text-sm text-slate-400 font-medium">
-              Hozircha xodimlar mavjud emas
+              {search || lavozim
+                ? "Qidiruv natijasi topilmadi"
+                : "Hozircha xodimlar mavjud emas"}
             </p>
           </div>
         ) : (
@@ -101,13 +187,12 @@ const XodimlarPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {paginated.map((user) => (
+                {data.map((user) => (
                   <tr
                     key={user.id}
                     onClick={() => navigate(`/users/${user.id}`)}
                     className="border-b border-slate-100 last:border-b-0 cursor-pointer hover:bg-slate-50 transition-colors duration-100"
                   >
-                    {/* FIO */}
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
@@ -131,21 +216,18 @@ const XodimlarPage = () => {
                       </div>
                     </td>
 
-                    {/* Lavozim */}
                     <td className="px-4 py-3.5">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 capitalize">
                         {user.lavozim.replace("_", " ")}
                       </span>
                     </td>
 
-                    {/* Boshqarma */}
                     <td className="px-4 py-3.5">
                       <span className="text-sm text-slate-600">
                         {user.boshqarma_nomi}
                       </span>
                     </td>
 
-                    {/* Holati */}
                     <td className="px-4 py-3.5">
                       {user.is_active ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">
@@ -170,9 +252,9 @@ const XodimlarPage = () => {
                 <span className="text-xs text-slate-400">
                   Jami{" "}
                   <span className="font-semibold text-slate-600">
-                    {data.length}
+                    {totalCount}
                   </span>{" "}
-                  ta xodim
+                  ta xodim · {page}-sahifa
                 </span>
                 <div className="flex items-center gap-1">
                   <button
@@ -182,21 +264,39 @@ const XodimlarPage = () => {
                   >
                     ‹
                   </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
-                          p === page
-                            ? "bg-slate-800 text-white"
-                            : "border border-slate-200 text-slate-500 hover:bg-slate-50"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ),
-                  )}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(
+                      (p) =>
+                        p === 1 || p === totalPages || Math.abs(p - page) <= 1,
+                    )
+                    .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                      if (i > 0 && p - (arr[i - 1] as number) > 1)
+                        acc.push("...");
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, i) =>
+                      p === "..." ? (
+                        <span
+                          key={`ellipsis-${i}`}
+                          className="w-7 h-7 flex items-center justify-center text-slate-400 text-xs"
+                        >
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p as number)}
+                          className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
+                            p === page
+                              ? "bg-slate-800 text-white"
+                              : "border border-slate-200 text-slate-500 hover:bg-slate-50"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ),
+                    )}
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
@@ -214,7 +314,10 @@ const XodimlarPage = () => {
       <AddUserModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSuccess={fetchUsers}
+        onSuccess={() => {
+          setPage(1);
+          fetchUsers();
+        }}
       />
     </div>
   );

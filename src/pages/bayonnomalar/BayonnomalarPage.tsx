@@ -1,6 +1,6 @@
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Table,
   Tag,
@@ -19,7 +19,8 @@ import {
   Upload,
   Select,
 } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import type { SorterResult } from "antd/es/table/interface";
 import {
   FileTextOutlined,
   CalendarOutlined,
@@ -34,6 +35,7 @@ import {
   MinusCircleOutlined,
   UploadOutlined,
   UserOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
@@ -76,25 +78,6 @@ interface UsersApiResponse {
   next: string | null;
   previous: string | null;
   results: User[];
-}
-
-interface PostPayload {
-  raqami: string;
-  sana: string;
-  mavzu: string;
-  fayl: File | null;
-  ishtirokchilar: string;
-  izoh: string;
-  topshiriqlar: Record<string, string>[];
-}
-
-interface PutPayload {
-  raqami: string;
-  sana: string;
-  mavzu: string;
-  fayl: File | null;
-  ishtirokchilar: string;
-  izoh: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -248,7 +231,6 @@ const BaseFormFields = ({
       </Upload>
     </Form.Item>
 
-    {/* ── Ishtirokchilar: multi-select from users API ── */}
     <Form.Item
       name="ishtirokchilar"
       label={<FieldLabel>Ishtirokchilar</FieldLabel>}
@@ -275,10 +257,9 @@ const BaseFormFields = ({
         options={users
           ?.filter((u) => u.is_active)
           ?.map((u) => ({
-            value: u.fio, // sent to backend as fio string
+            value: u.fio,
             search: `${u.fio} ${u.lavozim} ${u.boshqarma_nomi}`,
             label: <UserOptionLabel user={u} />,
-            // shown inside the select box as tag
             tag: (
               <span className="flex items-center gap-1">
                 {u.avatar ? (
@@ -328,11 +309,19 @@ const BaseFormFields = ({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 10;
+
 const BayonnomalarPage = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<Bayonnoma[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // ── Pagination / search / ordering state ──────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchValue, setSearchValue] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [ordering, setOrdering] = useState<string>("");
 
   // Users state
   const [users, setUsers] = useState<User[]>([]);
@@ -347,28 +336,39 @@ const BayonnomalarPage = () => {
   const [editForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
-  // ── GET Bayonnomalar ───────────────────────────────────────────────────────
-  const getBayonnomalar = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get<ApiResponse>(API_ENDPOINTS.BAYONNOMALAR.LIST);
-      setData(res.data.results);
-      setTotal(res.data.count);
-    } catch {
-      messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ── GET Bayonnomalar (with pagination, search, ordering) ──────────────────
+  const getBayonnomalar = useCallback(
+    async (page = 1, search = "", order = "") => {
+      setLoading(true);
+      try {
+        const params: Record<string, string | number> = {
+          page,
+          page_size: PAGE_SIZE,
+        };
+        if (search) params.search = search;
+        if (order) params.ordering = order;
 
-  // ── GET All Users (paginated — fetch all pages) ────────────────────────────
+        const res = await api.get<ApiResponse>(
+          API_ENDPOINTS.BAYONNOMALAR.LIST,
+          { params },
+        );
+        setData(res.data.results);
+        setTotal(res.data.count);
+      } catch {
+        messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [messageApi],
+  );
+
+  // ── GET All Users ──────────────────────────────────────────────────────────
   const getAllUsers = async () => {
     setUsersLoading(true);
     try {
-      let url: string | null = "/auth/users/?all=true";
-      const res = await api.get<UsersApiResponse>(url);
-
-      setUsers(res?.data);
+      const res = await api.get<UsersApiResponse>("/auth/users/?all=true");
+      setUsers(res?.data as unknown as User[]);
     } catch {
       messageApi.error("Foydalanuvchilarni yuklashda xatolik.");
     } finally {
@@ -377,9 +377,43 @@ const BayonnomalarPage = () => {
   };
 
   useEffect(() => {
-    getBayonnomalar();
+    getBayonnomalar(currentPage, searchValue, ordering);
+  }, [currentPage, searchValue, ordering]);
+
+  useEffect(() => {
     getAllUsers();
   }, []);
+
+  // ── Handle table change (pagination + sort) ───────────────────────────────
+  const handleTableChange = (
+    pagination: TablePaginationConfig,
+    _filters: unknown,
+    sorter: SorterResult<Bayonnoma> | SorterResult<Bayonnoma>[],
+  ) => {
+    const newPage = pagination.current ?? 1;
+    setCurrentPage(newPage);
+
+    // Build ordering string from sorter
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    if (s?.columnKey && s?.order) {
+      const prefix = s.order === "descend" ? "-" : "";
+      setOrdering(`${prefix}${s.columnKey}`);
+    } else {
+      setOrdering("");
+    }
+  };
+
+  // ── Search: trigger on Enter or button click ──────────────────────────────
+  const handleSearch = () => {
+    setCurrentPage(1);
+    setSearchValue(searchInput);
+  };
+
+  const handleSearchClear = () => {
+    setSearchInput("");
+    setSearchValue("");
+    setCurrentPage(1);
+  };
 
   // ── POST ───────────────────────────────────────────────────────────────────
   const handleCreate = async () => {
@@ -387,7 +421,6 @@ const BayonnomalarPage = () => {
       const values = await createForm.validateFields();
       setSubmitting(true);
 
-      // ishtirokchilar is now string[] of fio values → join as comma-separated string
       const ishtirokchilar: string = Array.isArray(values.ishtirokchilar)
         ? values.ishtirokchilar.join(", ")
         : (values.ishtirokchilar ?? "");
@@ -411,7 +444,6 @@ const BayonnomalarPage = () => {
       if (file) formData.append("fayl", file);
       formData.append("ishtirokchilar", ishtirokchilar);
       formData.append("izoh", values.izoh ?? "");
-      // formData.append("topshiriqlar", JSON.stringify(topshiriqlar));
 
       await api.post(API_ENDPOINTS.BAYONNOMALAR.LIST, formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -419,7 +451,7 @@ const BayonnomalarPage = () => {
       messageApi.success("Bayonnoma muvaffaqiyatli qo'shildi!");
       createForm.resetFields();
       setCreateOpen(false);
-      getBayonnomalar();
+      getBayonnomalar(currentPage, searchValue, ordering);
     } catch (err: unknown) {
       if (err && typeof err === "object" && "errorFields" in err) return;
       messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
@@ -436,9 +468,10 @@ const BayonnomalarPage = () => {
       sana: dayjs(record.sana),
       mavzu: record.mavzu,
       fayl: "",
-      // Parse existing comma-separated string back to array for the Select
-      ishtirokchilar: record.ishtirokchilar
-        ? record.ishtirokchilar.split(", ").map((s: string) => s.trim())
+      ishtirokchilar: (record as any).ishtirokchilar
+        ? (record as any).ishtirokchilar
+            .split(", ")
+            .map((s: string) => s.trim())
         : [],
       izoh: "",
     });
@@ -474,7 +507,7 @@ const BayonnomalarPage = () => {
       editForm.resetFields();
       setEditOpen(false);
       setEditTarget(null);
-      getBayonnomalar();
+      getBayonnomalar(currentPage, searchValue, ordering);
     } catch (err: unknown) {
       if (err && typeof err === "object" && "errorFields" in err) return;
       messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
@@ -488,7 +521,11 @@ const BayonnomalarPage = () => {
     try {
       await api.delete(`${API_ENDPOINTS.BAYONNOMALAR.LIST}${id}/`);
       messageApi.success("Bayonnoma o'chirildi.");
-      getBayonnomalar();
+      // If last item on page > 1, go back a page
+      const newPage =
+        data.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+      setCurrentPage(newPage);
+      getBayonnomalar(newPage, searchValue, ordering);
     } catch {
       messageApi.error("O'chirishda xatolik yuz berdi.");
     }
@@ -511,6 +548,7 @@ const BayonnomalarPage = () => {
       dataIndex: "raqami",
       key: "raqami",
       width: 130,
+      sorter: true,
       render: (val: string) => (
         <Tag
           color="blue"
@@ -525,6 +563,7 @@ const BayonnomalarPage = () => {
       dataIndex: "sana",
       key: "sana",
       width: 170,
+      sorter: true,
       render: (val: string) => (
         <div className="flex items-center gap-1.5 text-slate-600 text-sm">
           <CalendarOutlined className="text-blue-400" />
@@ -536,6 +575,7 @@ const BayonnomalarPage = () => {
       title: <FieldLabel>Mavzu</FieldLabel>,
       dataIndex: "mavzu",
       key: "mavzu",
+      sorter: true,
       render: (val: string) => (
         <Tooltip title={val}>
           <div className="flex items-start gap-2 max-w-xs">
@@ -554,6 +594,7 @@ const BayonnomalarPage = () => {
       title: <FieldLabel>Yaratuvchi</FieldLabel>,
       dataIndex: "yaratuvchi_fio",
       key: "yaratuvchi_fio",
+      sorter: true,
       render: (val: string) => {
         const initials = val
           .split(" ")
@@ -576,6 +617,7 @@ const BayonnomalarPage = () => {
       key: "topshiriqlar_soni",
       width: 130,
       align: "center",
+      sorter: true,
       render: (val: number) => (
         <Badge
           count={val}
@@ -597,6 +639,7 @@ const BayonnomalarPage = () => {
       dataIndex: "bajarilish_foizi",
       key: "bajarilish_foizi",
       width: 180,
+      sorter: true,
       render: (val: number) => (
         <div className="min-w-[140px]">
           <div className="mb-1 flex items-center justify-between">
@@ -629,9 +672,46 @@ const BayonnomalarPage = () => {
         </div>
       ),
     },
+    {
+      title: <FieldLabel>Amallar</FieldLabel>,
+      key: "actions",
+      width: 100,
+      align: "center",
+      render: (_: unknown, record: Bayonnoma) => (
+        <div
+          className="flex items-center justify-center gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* <Tooltip title="Tahrirlash">
+            <Button
+              size="small"
+              type="text"
+              icon={<EditOutlined className="text-amber-500" />}
+              onClick={() => openEdit(record)}
+              className="rounded-lg!"
+            />
+          </Tooltip> */}
+          <Tooltip title="O'chirish">
+            <Popconfirm
+              title="Bayonnomani o'chirish"
+              description="Haqiqatan ham o'chirmoqchimisiz?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Ha"
+              cancelText="Yo'q"
+              okButtonProps={{ danger: true }}
+            >
+              <Button
+                size="small"
+                type="text"
+                icon={<DeleteOutlined className="text-red-400" />}
+                className="rounded-lg!"
+              />
+            </Popconfirm>
+          </Tooltip>
+        </div>
+      ),
+    },
   ];
-
-  console.log(users);
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -705,12 +785,32 @@ const BayonnomalarPage = () => {
 
         {/* ── Table ── */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-100">
-          <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-            <span className="text-sm font-semibold text-slate-700">
+          <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between gap-4">
+            <span className="text-sm font-semibold text-slate-700 shrink-0">
               Bayonnomalar ro'yxati
             </span>
-            <span className="text-xs text-slate-400">
-              {data.length} ta natija ko'rsatilmoqda
+
+            {/* ── Search bar ── */}
+            <div className="flex items-center gap-2 flex-1 max-w-sm">
+              <Input
+                value={searchInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSearchInput(val);
+                  setSearchValue(val);
+                  setCurrentPage(1);
+                }}
+                placeholder="Raqam yoki mavzu..."
+                prefix={<SearchOutlined className="text-slate-400" />}
+                allowClear
+                onClear={handleSearchClear}
+                className="rounded-lg!"
+                size="middle"
+              />
+            </div>
+
+            <span className="text-xs text-slate-400 shrink-0">
+              {total} ta natija
             </span>
           </div>
 
@@ -719,16 +819,19 @@ const BayonnomalarPage = () => {
               dataSource={data}
               columns={columns}
               rowKey="id"
+              onChange={handleTableChange}
               onRow={(record) => ({
                 onClick: () => navigate(`/bayonnomalar/${record.id}`),
                 style: { cursor: "pointer" },
               })}
               pagination={{
-                pageSize: 10,
+                current: currentPage,
+                pageSize: PAGE_SIZE,
+                total: total,
                 showSizeChanger: false,
-                showTotal: (t) => (
+                showTotal: (t, range) => (
                   <span className="text-slate-500 text-xs">
-                    Jami {t} ta yozuv
+                    {range[0]}–{range[1]} / {t} ta yozuv
                   </span>
                 ),
               }}
@@ -742,7 +845,21 @@ const BayonnomalarPage = () => {
                 emptyText: (
                   <div className="py-16 text-center">
                     <FileTextOutlined className="mb-3 text-4xl text-slate-300" />
-                    <p className="text-slate-400">Bayonnomalar topilmadi</p>
+                    <p className="text-slate-400">
+                      {searchValue
+                        ? `"${searchValue}" bo'yicha natija topilmadi`
+                        : "Bayonnomalar topilmadi"}
+                    </p>
+                    {searchValue && (
+                      <Button
+                        size="small"
+                        type="link"
+                        onClick={handleSearchClear}
+                        className="text-indigo-500"
+                      >
+                        Filtrni tozalash
+                      </Button>
+                    )}
                   </div>
                 ),
               }}

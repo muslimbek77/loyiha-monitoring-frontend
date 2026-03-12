@@ -319,7 +319,7 @@ const HujjatlarPage = () => {
       <div className="mb-4 bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
         <div className="flex items-center gap-3 flex-wrap">
           {/* Search */}
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-[250px]">
             <SearchOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none" />
             <input
               value={filters.search}
@@ -344,7 +344,7 @@ const HujjatlarPage = () => {
             value={filters.holat || undefined}
             onChange={(val) => setFilter("holat", val ?? "")}
             options={HOLAT_OPTIONS}
-            className="min-w-[140px]"
+            className="min-w-[140px] py-1.5! rounded-xl!"
             size="middle"
           />
 
@@ -361,7 +361,7 @@ const HujjatlarPage = () => {
                 ?.toLowerCase()
                 .includes(input.toLowerCase())
             }
-            className="min-w-[160px]"
+            className="min-w-[230px] py-1.5! rounded-xl!"
             size="middle"
           />
 
@@ -378,7 +378,7 @@ const HujjatlarPage = () => {
                 ?.toLowerCase()
                 .includes(input.toLowerCase())
             }
-            className="min-w-[160px]"
+            className="min-w-[250px] grow py-1.5! rounded-xl!"
             size="middle"
           />
 
@@ -387,7 +387,7 @@ const HujjatlarPage = () => {
             value={filters.ordering}
             onChange={(val) => setFilter("ordering", val)}
             options={ORDERING_OPTIONS}
-            className="min-w-[140px]"
+            className="min-w-[140px] py-1.5! rounded-xl!"
             size="middle"
           />
 

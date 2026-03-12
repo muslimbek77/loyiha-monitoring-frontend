@@ -1,24 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Table,
-  Tag,
-  Badge,
-  Button,
-  Input,
-  Select,
-  Tooltip,
-  Card,
-  Statistic,
-  Spin,
-} from "antd";
+import { Table, Tooltip, Spin, Input, Select } from "antd";
 import {
   SearchOutlined,
   FilterOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  ReloadOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
@@ -27,23 +15,12 @@ import { API_ENDPOINTS } from "@/services/api/endpoints";
 const { Search } = Input;
 const { Option } = Select;
 
-// ─── Status helpers ───────────────────────────────────────────────────────────
 const statusConfig = {
-  kechikkan: {
-    icon: <ExclamationCircleOutlined />,
-    antColor: "red",
-  },
-  jarayonda: {
-    icon: <ClockCircleOutlined />,
-    antColor: "blue",
-  },
-  bajarildi: {
-    icon: <CheckCircleOutlined />,
-    antColor: "green",
-  },
+  kechikkan: { icon: <ExclamationCircleOutlined />, antColor: "red" },
+  jarayonda: { icon: <ClockCircleOutlined />, antColor: "blue" },
+  bajarildi: { icon: <CheckCircleOutlined />, antColor: "green" },
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
 const TopshiriqlarPage = () => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
@@ -89,6 +66,45 @@ const TopshiriqlarPage = () => {
     bajarildi: data.filter((d) => d.holat === "bajarildi").length,
   };
 
+  const statCards = [
+    {
+      label: "Jami",
+      value: total,
+      colorClass: "text-slate-800",
+      bgClass: "bg-gradient-to-br from-slate-50 to-slate-100",
+      borderClass: "border-slate-200",
+      accentClass: "text-slate-500",
+      dotClass: "bg-slate-400",
+    },
+    {
+      label: "Kechikkan",
+      value: stats.kechikkan,
+      colorClass: "text-rose-700",
+      bgClass: "bg-gradient-to-br from-rose-50 to-rose-100",
+      borderClass: "border-rose-200",
+      accentClass: "text-rose-500",
+      dotClass: "bg-rose-400",
+    },
+    {
+      label: "Jarayonda",
+      value: stats.jarayonda,
+      colorClass: "text-blue-700",
+      bgClass: "bg-gradient-to-br from-blue-50 to-blue-100",
+      borderClass: "border-blue-200",
+      accentClass: "text-blue-500",
+      dotClass: "bg-blue-400",
+    },
+    {
+      label: "Bajarildi",
+      value: stats.bajarildi,
+      colorClass: "text-green-700",
+      bgClass: "bg-gradient-to-br from-green-50 to-green-100",
+      borderClass: "border-green-200",
+      accentClass: "text-green-500",
+      dotClass: "bg-green-400",
+    },
+  ];
+
   const columns = [
     {
       title: "Bayonnoma №",
@@ -96,19 +112,7 @@ const TopshiriqlarPage = () => {
       key: "bayonnoma_raqami",
       width: 150,
       render: (val) => (
-        <span
-          style={{
-            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#1e293b",
-            background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-            padding: "3px 10px",
-            borderRadius: 6,
-            border: "1px solid #cbd5e1",
-            letterSpacing: "0.03em",
-          }}
-        >
+        <span className="font-mono text-xs font-semibold text-slate-800 bg-gradient-to-br from-slate-100 to-slate-200 px-2.5 py-1 rounded-md border border-slate-300 tracking-wide">
           {val}
         </span>
       ),
@@ -119,22 +123,7 @@ const TopshiriqlarPage = () => {
       key: "ijrochi_boshqarma_qisqa_nomi",
       width: 120,
       render: (val) => (
-        <div
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 13,
-            boxShadow: "0 2px 8px rgba(99,102,241,0.35)",
-            letterSpacing: "0.02em",
-          }}
-        >
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-300/50 tracking-wide">
           {val}
         </div>
       ),
@@ -146,14 +135,7 @@ const TopshiriqlarPage = () => {
       width: 90,
       align: "center",
       render: (val) => (
-        <span
-          style={{
-            color: "#94a3b8",
-            fontWeight: 600,
-            fontSize: 13,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-        >
+        <span className="text-slate-400 font-semibold text-sm font-mono">
           #{val}
         </span>
       ),
@@ -163,14 +145,7 @@ const TopshiriqlarPage = () => {
       dataIndex: "mazmun",
       key: "mazmun",
       render: (val) => (
-        <span
-          style={{
-            color: "#334155",
-            fontSize: 13.5,
-            lineHeight: 1.55,
-            fontWeight: 400,
-          }}
-        >
+        <span className="text-slate-700 text-sm leading-relaxed font-normal">
           {val}
         </span>
       ),
@@ -181,17 +156,8 @@ const TopshiriqlarPage = () => {
       key: "muddat",
       width: 140,
       render: (val) => (
-        <span
-          style={{
-            color: "#475569",
-            fontSize: 13,
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <ClockCircleOutlined style={{ color: "#94a3b8", fontSize: 12 }} />
+        <span className="flex items-center gap-1.5 text-slate-600 text-sm font-semibold">
+          <ClockCircleOutlined className="text-slate-400 text-xs" />
           {val}
         </span>
       ),
@@ -204,38 +170,13 @@ const TopshiriqlarPage = () => {
       render: (val, row) => {
         const cfg = statusConfig[val] || statusConfig.jarayonda;
         const styleMap = {
-          kechikkan: {
-            bg: "linear-gradient(135deg,#fff1f2,#ffe4e6)",
-            color: "#be123c",
-            border: "#fecdd3",
-          },
-          jarayonda: {
-            bg: "linear-gradient(135deg,#eff6ff,#dbeafe)",
-            color: "#1d4ed8",
-            border: "#bfdbfe",
-          },
-          bajarildi: {
-            bg: "linear-gradient(135deg,#f0fdf4,#dcfce7)",
-            color: "#15803d",
-            border: "#bbf7d0",
-          },
+          kechikkan: "bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border-rose-200",
+          jarayonda: "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200",
+          bajarildi: "bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200",
         };
-        const s = styleMap[val] || styleMap.jarayonda;
         return (
           <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              background: s.bg,
-              color: s.color,
-              border: `1px solid ${s.border}`,
-              borderRadius: 20,
-              padding: "3px 11px",
-              fontSize: 12,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-            }}
+            className={`inline-flex items-center gap-1.5 border rounded-full px-3 py-0.5 text-xs font-semibold whitespace-nowrap ${styleMap[val] || styleMap.jarayonda}`}
           >
             {cfg.icon}
             {row.holat_display}
@@ -252,16 +193,7 @@ const TopshiriqlarPage = () => {
       render: (val, row) => {
         if (row.bajarildi)
           return (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                color: "#16a34a",
-                fontWeight: 600,
-                fontSize: 12,
-              }}
-            >
+            <span className="inline-flex items-center gap-1 text-green-600 font-semibold text-xs">
               <CheckCircleOutlined />
               Tugallandi
             </span>
@@ -269,36 +201,13 @@ const TopshiriqlarPage = () => {
         if (val < 0)
           return (
             <Tooltip title={`${Math.abs(val)} kun kechikdi`}>
-              <span
-                style={{
-                  display: "inline-block",
-                  color: "#dc2626",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  background: "linear-gradient(135deg,#fff1f2,#ffe4e6)",
-                  border: "1px solid #fecdd3",
-                  padding: "2px 10px",
-                  borderRadius: 8,
-                  cursor: "help",
-                }}
-              >
+              <span className="inline-block text-red-600 font-bold text-sm bg-gradient-to-br from-rose-50 to-rose-100 border border-rose-200 px-2.5 py-0.5 rounded-lg cursor-help">
                 {val} kun
               </span>
             </Tooltip>
           );
         return (
-          <span
-            style={{
-              display: "inline-block",
-              color: "#2563eb",
-              fontWeight: 700,
-              fontSize: 13,
-              background: "linear-gradient(135deg,#eff6ff,#dbeafe)",
-              border: "1px solid #bfdbfe",
-              padding: "2px 10px",
-              borderRadius: 8,
-            }}
-          >
+          <span className="inline-block text-blue-600 font-bold text-sm bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 px-2.5 py-0.5 rounded-lg">
             +{val} kun
           </span>
         );
@@ -306,245 +215,65 @@ const TopshiriqlarPage = () => {
     },
   ];
 
-  const statCards = [
-    {
-      label: "Jami",
-      value: total,
-      color: "#1e293b",
-      bg: "linear-gradient(135deg,#f8fafc,#f1f5f9)",
-      border: "#e2e8f0",
-      accent: "#64748b",
-      dot: "#94a3b8",
-    },
-    {
-      label: "Kechikkan",
-      value: stats.kechikkan,
-      color: "#be123c",
-      bg: "linear-gradient(135deg,#fff1f2,#ffe4e6)",
-      border: "#fecdd3",
-      accent: "#e11d48",
-      dot: "#fb7185",
-    },
-    {
-      label: "Jarayonda",
-      value: stats.jarayonda,
-      color: "#1d4ed8",
-      bg: "linear-gradient(135deg,#eff6ff,#dbeafe)",
-      border: "#bfdbfe",
-      accent: "#2563eb",
-      dot: "#60a5fa",
-    },
-    {
-      label: "Bajarildi",
-      value: stats.bajarildi,
-      color: "#15803d",
-      bg: "linear-gradient(135deg,#f0fdf4,#dcfce7)",
-      border: "#bbf7d0",
-      accent: "#16a34a",
-      dot: "#4ade80",
-    },
-  ];
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background:
-          "linear-gradient(160deg, #f8fafc 0%, #eef2ff 50%, #f0f9ff 100%)",
-        borderRadius: 16,
-        fontFamily: "'DM Sans', 'Nunito', 'Segoe UI', sans-serif",
-      }}
-    >
-      {/* ── Header ────────────────────────────────────────────── */}
-      <div
-        style={{
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(226,232,240,0.8)",
-          borderRadius: "16px 16px 0 0",
-          boxShadow: "0 1px 12px rgba(99,102,241,0.07)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: "100%",
-            margin: "0 auto",
-            padding: "18px 28px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 13,
-                background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 4px 14px rgba(99,102,241,0.4)",
-              }}
-            >
-              <FileTextOutlined style={{ color: "#fff", fontSize: 20 }} />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-sky-50 rounded-2xl font-sans">
+      {/* Header */}
+      <div className="bg-white/85 backdrop-blur-xl border-b border-slate-200/80 rounded-t-2xl shadow-sm shadow-indigo-100/50">
+        <div className="w-full px-7 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-[13px] bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-400/40">
+              <FileTextOutlined className="text-white text-xl" />
             </div>
             <div>
-              <h1
-                style={{
-                  margin: 0,
-                  fontSize: 20,
-                  fontWeight: 800,
-                  color: "#0f172a",
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.2,
-                }}
-              >
+              <h1 className="m-0 text-xl font-extrabold text-slate-900 tracking-tight leading-tight">
                 Topshiriqlar
               </h1>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 12,
-                  color: "#94a3b8",
-                  fontWeight: 500,
-                  letterSpacing: "0.01em",
-                }}
-              >
+              <p className="m-0 text-xs text-slate-400 font-medium tracking-wide">
                 Bayonnomalar bo'yicha topshiriqlar ro'yxati
               </p>
             </div>
           </div>
-
-          {/* <Button
-            icon={<ReloadOutlined />}
-            onClick={() => getAllTopshiriqlar(currentPage)}
-            style={{
-              borderRadius: 10,
-              border: "1px solid #e2e8f0",
-              color: "#64748b",
-              fontWeight: 600,
-              fontSize: 13,
-              height: 38,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: "#fff",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-            }}
-          >
-            Yangilash
-          </Button> */}
         </div>
       </div>
 
-      <div
-        style={{
-          maxWidth: "100%",
-          margin: "0 auto",
-          padding: "24px 28px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 20,
-        }}
-      >
-        {/* ── Stat Cards ────────────────────────────────────────── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 14,
-          }}
-        >
+      <div className="mx-auto px-7 py-6 flex flex-col gap-5">
+        {/* Stat Cards */}
+        <div className="grid grid-cols-4 gap-3.5">
           {statCards.map((s) => (
             <div
               key={s.label}
-              style={{
-                background: s.bg,
-                border: `1px solid ${s.border}`,
-                borderRadius: 14,
-                padding: "16px 20px",
-                boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
-                position: "relative",
-                overflow: "hidden",
-              }}
+              className={`relative overflow-hidden ${s.bgClass} border ${s.borderClass} rounded-2xl p-4 shadow-sm`}
             >
               {/* Decorative circle */}
               <div
-                style={{
-                  position: "absolute",
-                  top: -14,
-                  right: -14,
-                  width: 56,
-                  height: 56,
-                  borderRadius: "50%",
-                  background: s.dot,
-                  opacity: 0.15,
-                }}
+                className={`absolute -top-3.5 -right-3.5 w-14 h-14 rounded-full ${s.dotClass} opacity-15`}
               />
-              <p
-                style={{
-                  margin: "0 0 4px",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: s.accent,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                }}
-              >
+              <p className={`m-0 mb-1 text-[11px] font-bold uppercase tracking-widest ${s.accentClass}`}>
                 {s.label}
               </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 32,
-                  fontWeight: 800,
-                  color: s.color,
-                  lineHeight: 1.1,
-                  letterSpacing: "-0.03em",
-                }}
-              >
+              <p className={`m-0 text-[32px] font-extrabold leading-tight tracking-tighter ${s.colorClass}`}>
                 {s.value}
               </p>
             </div>
           ))}
         </div>
 
-        {/* ── Filters ───────────────────────────────────────────── */}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
+        {/* Filters */}
+        <div className="flex gap-2.5 flex-wrap items-center">
           <Search
             placeholder="Bayonnoma raqami, mazmun yoki boshqarma..."
             allowClear
-            prefix={<SearchOutlined style={{ color: "#94a3b8" }} />}
+            prefix={<SearchOutlined className="text-slate-400" />}
             onChange={(e) => setSearchText(e.target.value)}
-            style={{
-              flex: 1,
-              maxWidth: 480,
-              borderRadius: 10,
-            }}
-            styles={{
-              input: {
-                fontWeight: 500,
-                fontSize: 13,
-              },
-            }}
+            className="flex-1 max-w-[480px] rounded-xl"
+            styles={{ input: { fontWeight: 500, fontSize: 13 } }}
           />
           <Select
             value={filterHolat}
             onChange={setFilterHolat}
-            style={{ minWidth: 170 }}
-            suffixIcon={<FilterOutlined style={{ color: "#64748b" }} />}
-            styles={{
-              popup: { borderRadius: 12 },
-            }}
+            className="min-w-[170px]"
+            suffixIcon={<FilterOutlined className="text-slate-500" />}
+            styles={{ popup: { borderRadius: 12 } }}
           >
             <Option value="all">Barcha holatlar</Option>
             <Option value="kechikkan">Kechikkan</Option>
@@ -553,17 +282,8 @@ const TopshiriqlarPage = () => {
           </Select>
         </div>
 
-        {/* ── Table ─────────────────────────────────────────────── */}
-        <div
-          style={{
-            background: "rgba(255,255,255,0.92)",
-            backdropFilter: "blur(8px)",
-            borderRadius: 16,
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 2px 16px rgba(99,102,241,0.07)",
-            overflow: "hidden",
-          }}
-        >
+        {/* Table */}
+        <div className="bg-white/92 backdrop-blur-lg rounded-2xl border border-slate-200 shadow-md shadow-indigo-100/50 overflow-hidden">
           <style>{`
             .tsh-table .ant-table-thead > tr > th {
               background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
@@ -622,12 +342,9 @@ const TopshiriqlarPage = () => {
                 pageSize: 10,
                 total: total,
                 showTotal: (total, range) => (
-                  <span
-                    style={{ color: "#94a3b8", fontSize: 12, fontWeight: 500 }}
-                  >
+                  <span className="text-slate-400 text-xs font-medium">
                     {range[0]}–{range[1]} /{" "}
-                    <strong style={{ color: "#475569" }}>{total}</strong> ta
-                    topshiriq
+                    <strong className="text-slate-600">{total}</strong> ta topshiriq
                   </span>
                 ),
                 showSizeChanger: false,
@@ -642,24 +359,9 @@ const TopshiriqlarPage = () => {
               })}
               locale={{
                 emptyText: (
-                  <div
-                    style={{
-                      padding: "64px 0",
-                      textAlign: "center",
-                      color: "#cbd5e1",
-                    }}
-                  >
-                    <FileTextOutlined
-                      style={{ fontSize: 40, marginBottom: 12, opacity: 0.35 }}
-                    />
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: "#94a3b8",
-                      }}
-                    >
+                  <div className="py-16 text-center text-slate-300">
+                    <FileTextOutlined className="text-4xl mb-3 opacity-35" />
+                    <p className="m-0 text-sm font-medium text-slate-400">
                       Topshiriqlar topilmadi
                     </p>
                   </div>

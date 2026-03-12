@@ -304,7 +304,7 @@ const ObyektPage = () => {
             options={HOLAT_OPTIONS}
             size="middle"
             style={{ width: 148 }}
-            className="text-sm"
+            className="text-sm py-1.5! rounded-xl!"
             placeholder="Holat"
           />
         </div>
@@ -320,7 +320,7 @@ const ObyektPage = () => {
             options={ORDERING_OPTIONS}
             size="middle"
             style={{ width: 200 }}
-            className="text-sm"
+            className="text-sm py-1.5! rounded-xl!"
             placeholder="Tartiblash"
           />
         </div>

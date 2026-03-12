@@ -5,23 +5,17 @@ import Header from "./Header";
 
 const DashboardLayout = () => {
   return (
-    <div className="flex h-screen">
-      {/* Sidebar - Left */}
-      <Sidebar />
+   <div className="flex h-screen overflow-hidden">
+  <Sidebar />
 
-      {/* Main content area */}
-      <div className="flex flex-col flex-1">
-        {/* Header - Top */}
-        <Header />
+  <div className="flex flex-col flex-1 overflow-hidden">
+    <Header />
 
-        {/* Main content - Center (Outlet renders DashboardPage, ProfilePage, etc.) */}
-        <main className="flex-1 overflow-auto p-6">
-          <Outlet />
-        </main>
-
-        {/* Footer - Bottom */}
-      </div>
-    </div>
+    <main className="flex-1 overflow-auto p-6 min-h-0">
+      <Outlet />
+    </main>
+  </div>
+</div>
   );
 };
 
