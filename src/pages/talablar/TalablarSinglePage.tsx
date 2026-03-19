@@ -171,7 +171,6 @@ const TalablarSinglePage = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { id } = useParams();
-  console.log(data);
 
   useEffect(() => {
     const fetchTalab = async () => {

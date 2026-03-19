@@ -29,6 +29,9 @@ import JarimalarPage from "@/pages/jarimalar/JarimalarPage";
 import JarimalarSinglePage from "@/pages/jarimalar/JarimalarSinglePage";
 import Talablar from "@/pages/talablar/TalablarPage";
 import TalablarSinglePage from "@/pages/talablar/TalablarSinglePage";
+import KategoriyalarPage from "@/pages/kategoriyalar/KategoriyalarPage";
+import RoleGuard from "@/shared/components/guards/RoleGuard";
+import UnauthorizedPage from "@/pages/UnauthorizedPage";
 
 // Lazy load pages
 const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
@@ -178,20 +181,26 @@ export const router = createBrowserRouter([
           </Suspense>
         ),
       },
+
       {
         path: "users",
         element: (
-          <Suspense fallback={<PageLoader />}>
-            <XodimlarPage />
-          </Suspense>
+          <RoleGuard action="canManageUsers" redirectTo="/unauthorized">
+            <Suspense fallback={<PageLoader />}>
+              <XodimlarPage />
+            </Suspense>
+          </RoleGuard>
         ),
       },
+
       {
         path: "users/:id",
         element: (
-          <Suspense fallback={<PageLoader />}>
-            <XodimlarSinglePage />
-          </Suspense>
+          <RoleGuard action="canManageUsers" redirectTo="/unauthorized">
+            <Suspense fallback={<PageLoader />}>
+              <XodimlarSinglePage />
+            </Suspense>
+          </RoleGuard>
         ),
       },
 
@@ -249,6 +258,23 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <div>Settings Page</div>
+          </Suspense>
+        ),
+      },
+      {
+        path: "kategoriyalar",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <KategoriyalarPage />
+          </Suspense>
+        ),
+      },
+
+      {
+        path: "unauthorized",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <UnauthorizedPage />
           </Suspense>
         ),
       },

@@ -34,6 +34,7 @@ import type { ColumnsType } from "antd/es/table";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { formatDate } from "@/shared/components/const/CustomUI";
+import Can from "@/shared/components/guards/Can";
 
 interface Jarima {
   id: number;
@@ -290,14 +291,16 @@ const JarimalarPage = () => {
             </div>
           </div>
           <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={openCreate}
-              className="bg-slate-800 border-slate-800 hover:bg-slate-700 rounded-xl!"
-            >
-              Jarima qo'shish
-            </Button>
+            <Can action="canCreate">
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={openCreate}
+                className="bg-slate-800 border-slate-800 hover:bg-slate-700 rounded-xl!"
+              >
+                Jarima qo'shish
+              </Button>
+            </Can>
           </Space>
         </div>
       </div>
@@ -446,7 +449,7 @@ const JarimalarPage = () => {
             size: "small",
           }}
           rowClassName="hover:bg-slate-50/60 transition-colors cursor-pointer"
-          className="rounded-2xl overflow-hidden"
+          className="overflow-hidden"
           locale={{ emptyText: <Empty description="Jarimalar yo'q" /> }}
         />
       </Card>

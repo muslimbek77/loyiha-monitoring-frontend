@@ -22,7 +22,7 @@ export const useAuth = () => {
   // Auto-fetch user on mount if token exists
   useEffect(() => {
     const storedToken = localStorage.getItem("auth_token");
-    
+
     // Only fetch if we have a token, no user, and haven't fetched yet
     if (storedToken && !user && !hasFetchedRef.current && !isLoading) {
       hasFetchedRef.current = true;

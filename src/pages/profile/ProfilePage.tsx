@@ -4,6 +4,7 @@ import type { AxiosError } from "axios";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { data } from "react-router-dom";
 
 type ErrorResponse = {
   message?: string;
@@ -46,8 +47,6 @@ const ProfilePage = () => {
       "Xatolik yuz berdi"
     );
   };
-
-  console.log("Profile render");
 
   if (!token) {
     return (
@@ -332,12 +331,6 @@ const ProfilePage = () => {
 
                   {/* Quick Stats */}
                   <div className="w-full mt-6 pt-6 border-t border-gray-200 space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Foydalanuvchi ID</span>
-                      <span className="font-semibold text-gray-900">
-                        #{user.id}
-                      </span>
-                    </div>
                     {user.boshqarma && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Boshqarma</span>
@@ -431,7 +424,7 @@ const ProfilePage = () => {
                   </div>
                   <button
                     onClick={() => setIsEditingProfile(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
                     <svg
                       className="w-6 h-6"
@@ -553,7 +546,7 @@ const ProfilePage = () => {
                   </div>
                   <button
                     onClick={() => setIsChangingPassword(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
                     <svg
                       className="w-6 h-6"

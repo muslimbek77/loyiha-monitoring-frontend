@@ -7,6 +7,7 @@ import {
   SendOutlined,
   IdcardOutlined,
   BankOutlined,
+  MailOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
@@ -251,6 +252,25 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
           <Input
             prefix={<SendOutlined className="text-gray-400" />}
             placeholder="@username yoki 123456789"
+            size="large"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="email"
+          label={
+            <span className="text-sm font-medium text-gray-700">
+              Elektron pochta
+            </span>
+          }
+          rules={[
+            { required: true, message: "Email kiriting" },
+            { type: "email", message: "To'g'ri email kiriting" },
+          ]}
+        >
+          <Input
+            prefix={<MailOutlined className="text-gray-400" />}
+            placeholder="email"
             size="large"
           />
         </Form.Item>

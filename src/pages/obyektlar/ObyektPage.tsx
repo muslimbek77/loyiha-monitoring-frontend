@@ -24,6 +24,7 @@ import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate } from "react-router-dom";
 import ManzilField from "./ManzilField";
+import Can from "@/shared/components/guards/Can";
 
 interface Obyekt {
   id: number;
@@ -228,14 +229,37 @@ const ObyektPage = () => {
   const handleCreateObyekt = async (values: any) => {
     try {
       setCreateLoading(true);
-      const payload: CreateObyektData = {
-        ...values,
-        boshlanish_sanasi: values.boshlanish_sanasi.format("YYYY-MM-DD"),
-        tugash_sanasi: values.tugash_sanasi.format("YYYY-MM-DD"),
-        shartnoma_summasi: values.shartnoma_summasi.toString(),
-        sarflangan_summa: values.sarflangan_summa.toString(),
-      };
-      await api.post(API_ENDPOINTS.OBYEKTLAR.LIST, payload);
+      const formData = new FormData();
+
+      formData.append("nomi", values.nomi);
+      formData.append("manzil", values.manzil);
+      formData.append("buyurtmachi", values.buyurtmachi);
+      formData.append("pudratchi", values.pudratchi);
+      formData.append("holat", values.holat);
+      formData.append("reja_foizi", values.reja_foizi);
+      formData.append("bajarilish_foizi", values.bajarilish_foizi);
+      formData.append(
+        "boshlanish_sanasi",
+        values.boshlanish_sanasi.format("YYYY-MM-DD"),
+      );
+      formData.append(
+        "tugash_sanasi",
+        values.tugash_sanasi.format("YYYY-MM-DD"),
+      );
+      formData.append("shartnoma_summasi", values.shartnoma_summasi.toString());
+      formData.append("sarflangan_summa", values.sarflangan_summa.toString());
+      formData.append("masul_xodim", values.masul_xodim);
+      formData.append("tavsif", values.tavsif || "");
+
+      if (values.rasm && values.rasm.length > 0) {
+        formData.append("rasm", values.rasm[0].originFileObj);
+      }
+
+      await api.post(API_ENDPOINTS.OBYEKTLAR.LIST, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
       message.success("Obyekt muvaffaqiyatli qo'shildi");
       setIsModalOpen(false);
       form.resetFields();
@@ -272,13 +296,16 @@ const ObyektPage = () => {
           <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
             Obyektlar
           </h1>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-xl transition-colors duration-150 cursor-pointer"
-          >
-            <PlusOutlined className="text-xs" />
-            Yangi Obyekt
-          </button>
+
+          <Can action="canCreate">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-xl transition-colors duration-150 cursor-pointer"
+            >
+              <PlusOutlined className="text-xs" />
+              Yangi Obyekt
+            </button>
+          </Can>
         </div>
       </div>
 
@@ -366,63 +393,67 @@ const ObyektPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.map((row) => (
-                  <tr
-                    key={row.id}
-                    onClick={() => navigate(`/obyekt/${row.id}`)}
-                    className="cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors duration-100"
-                  >
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                          <BuildOutlined className="text-slate-400 text-xs" />
+                {data?.length > 0 &&
+                  data?.map((row) => (
+                    <tr
+                      key={row?.id}
+                      onClick={() => navigate(`/obyekt/${row?.id}`)}
+                      className="cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors duration-100"
+                    >
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                            <BuildOutlined className="text-slate-400 text-xs" />
+                          </div>
+                          <span className="text-sm font-semibold text-slate-700">
+                            {row.nomi}
+                          </span>
                         </div>
-                        <span className="text-sm font-semibold text-slate-700">
-                          {row.nomi}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1 text-slate-500 text-sm">
+                          <EnvironmentOutlined className="text-slate-300 text-xs ml-1" />
+                          {row.manzil}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <HolatBadge
+                          holat={row.holat}
+                          label={row.holat_display}
+                        />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <MiniProgress
+                          value={row.bajarilish_foizi}
+                          color="#3b82f6"
+                        />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <MiniProgress value={row.reja_foizi} color="#a855f7" />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="text-sm text-slate-600 tabular-nums">
+                          {dayjs(row.tugash_sanasi).format("DD.MM.YY")}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-1 text-slate-500 text-sm">
-                        <EnvironmentOutlined className="text-slate-300 text-xs ml-1" />
-                        {row.manzil}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <HolatBadge holat={row.holat} label={row.holat_display} />
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <MiniProgress
-                        value={row.bajarilish_foizi}
-                        color="#3b82f6"
-                      />
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <MiniProgress value={row.reja_foizi} color="#a855f7" />
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="text-sm text-slate-600 tabular-nums">
-                        {dayjs(row.tugash_sanasi).format("DD.MM.YY")}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      {row.is_muammoli ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-500">
-                          <WarningOutlined className="text-[10px]" /> Bor
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{" "}
-                          Yo'q
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {row.is_muammoli ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-500">
+                            <WarningOutlined className="text-[10px]" /> Bor
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{" "}
+                            Yo'q
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
 
-            {data.length === 0 && (
+            {data?.length === 0 && (
               <div className="text-center py-16 text-slate-400 text-sm">
                 {activeFilterCount > 0
                   ? "Filtr bo'yicha obyektlar topilmadi"
@@ -522,7 +553,7 @@ const ObyektPage = () => {
                 loading={usersLoading}
                 showSearch
                 optionFilterProp="label"
-                options={users.map((u) => ({ value: u.id, label: u.fio }))}
+                options={users?.map((u) => ({ value: u.id, label: u.fio }))}
               />
             </Form.Item>
 

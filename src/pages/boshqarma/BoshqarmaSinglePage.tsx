@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Spin } from "antd";
+import { Spin, Modal, Form, Input, message } from "antd";
 import {
   ArrowLeftOutlined,
   UserOutlined,
@@ -8,6 +8,8 @@ import {
   FileOutlined,
   FileDoneOutlined,
   ClockCircleOutlined,
+  EditOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 
@@ -31,6 +33,17 @@ interface HujjatType {
   fayl_turi: string;
   is_kechikkan: boolean;
   yuklangan_vaqt: string;
+}
+
+interface BoshqarmaType {
+  id: number;
+  nomi: string;
+  qisqa_nomi: string;
+}
+
+interface BoshqarmaUpdatePayload {
+  nomi: string;
+  qisqa_nomi: string;
 }
 
 type TabKey = "xodimlar" | "hujjatlar";
@@ -71,6 +84,33 @@ const BoshqarmaSinglePage = () => {
   const [hujjatlar, setHujjatlar] = useState<HujjatType[]>([]);
   const [hujjatlarLoading, setHujjatlarLoading] = useState(false);
 
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editFetchLoading, setEditFetchLoading] = useState(false);
+  const [form] = Form.useForm<BoshqarmaUpdatePayload>();
+
+  const fetchBoshqarmaDetail = async () => {
+    try {
+      setEditFetchLoading(true);
+      const res = await api.get<BoshqarmaType>(`core/boshqarmalar/${id}/`);
+      form.setFieldsValue({
+        nomi: res.data.nomi,
+        qisqa_nomi: res.data.qisqa_nomi,
+      });
+    } catch (error) {
+      console.error("Error fetching boshqarma detail:", error);
+      message.error("Ma'lumotlarni yuklashda xatolik yuz berdi");
+    } finally {
+      setEditFetchLoading(false);
+    }
+  };
+
+  const handleEditOpen = () => {
+    setEditModalOpen(true);
+    fetchBoshqarmaDetail();
+  };
+
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
@@ -95,6 +135,38 @@ const BoshqarmaSinglePage = () => {
     } finally {
       setHujjatlarLoading(false);
     }
+  };
+
+  const handleEditSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setEditLoading(true);
+      await api.put(`core/boshqarmalar/${id}/`, values);
+      message.success("Boshqarma muvaffaqiyatli yangilandi");
+      setEditModalOpen(false);
+      form.resetFields();
+    } catch (error) {
+      console.error("Error updating boshqarma:", error);
+      message.error("Yangilashda xatolik yuz berdi");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await api.delete(`core/boshqarmalar/${id}/`);
+      message.success("Boshqarma muvaffaqiyatli o'chirildi");
+      navigate("/boshqarma");
+    } catch (error) {
+      console.error("Error deleting boshqarma:", error);
+      message.error("O'chirishda xatolik yuz berdi");
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditModalOpen(false);
+    form.resetFields();
   };
 
   useEffect(() => {
@@ -135,9 +207,6 @@ const BoshqarmaSinglePage = () => {
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-1">
-              Boshqarma #{id}
-            </p>
             <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
               {activeTab === "xodimlar"
                 ? "Xodimlar ro'yxati"
@@ -158,6 +227,22 @@ const BoshqarmaSinglePage = () => {
                 {hujjatlar.length} ta hujjat
               </span>
             )}
+
+            {/* Edit button */}
+            <button
+              onClick={handleEditOpen}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-full transition-colors cursor-pointer"
+            >
+              <EditOutlined className="text-[11px]" />
+              Tahrirlash
+            </button>
+            <button
+              onClick={handleDelete}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-full transition-colors cursor-pointer"
+            >
+              <DeleteOutlined className="text-[11px]" />
+              O'chirish
+            </button>
           </div>
         </div>
       </div>
@@ -302,14 +387,11 @@ const BoshqarmaSinglePage = () => {
                     key={doc.id}
                     className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors duration-100"
                   >
-                    {/* ID */}
                     <td className="px-4 py-3.5">
                       <span className="text-xs font-medium text-slate-400 tabular-nums">
                         {doc.id}
                       </span>
                     </td>
-
-                    {/* Nomi */}
                     <td className="px-4 py-3.5 max-w-[220px]">
                       <div className="flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
@@ -323,29 +405,21 @@ const BoshqarmaSinglePage = () => {
                         </button>
                       </div>
                     </td>
-
-                    {/* Obyekt */}
                     <td className="px-4 py-3.5 max-w-[160px]">
                       <span className="text-sm text-slate-600 line-clamp-2">
                         {doc.obyekt_nomi}
                       </span>
                     </td>
-
-                    {/* Kategoriya */}
                     <td className="px-4 py-3.5">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-50 text-violet-600">
                         {doc.kategoriya_nomi}
                       </span>
                     </td>
-
-                    {/* Fayl turi */}
                     <td className="px-4 py-3.5">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 font-mono">
                         {doc.fayl_turi}
                       </span>
                     </td>
-
-                    {/* Muddat */}
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1.5">
                         {doc.is_kechikkan && (
@@ -360,8 +434,6 @@ const BoshqarmaSinglePage = () => {
                         </span>
                       </div>
                     </td>
-
-                    {/* Holati */}
                     <td className="px-4 py-3.5">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${holat.bg} ${holat.text}`}
@@ -379,6 +451,74 @@ const BoshqarmaSinglePage = () => {
           </table>
         </div>
       )}
+
+      {/* ── EDIT MODAL ── */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 pb-1">
+            <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center">
+              <EditOutlined className="text-slate-500 text-xs" />
+            </div>
+            <span className="text-sm font-semibold text-slate-700">
+              Boshqarmani tahrirlash
+            </span>
+          </div>
+        }
+        open={editModalOpen}
+        onCancel={handleEditCancel}
+        onOk={handleEditSubmit}
+        okText="Saqlash"
+        cancelText="Bekor qilish"
+        confirmLoading={editLoading}
+        okButtonProps={{
+          className: "bg-slate-800 hover:bg-slate-700 border-slate-800",
+        }}
+        width={440}
+        centered
+      >
+        <Spin spinning={editFetchLoading}>
+          <Form
+            form={form}
+            layout="vertical"
+            className="mt-4"
+            requiredMark={false}
+          >
+            <Form.Item
+              name="nomi"
+              label={
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Nomi
+                </span>
+              }
+              rules={[{ required: true, message: "Nomi kiritilishi shart" }]}
+            >
+              <Input
+                placeholder="Boshqarma nomini kiriting"
+                className="rounded-lg text-sm"
+                size="large"
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="qisqa_nomi"
+              label={
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Qisqa nomi
+                </span>
+              }
+              rules={[
+                { required: true, message: "Qisqa nomi kiritilishi shart" },
+              ]}
+            >
+              <Input
+                placeholder="Qisqa nomini kiriting"
+                className="rounded-lg text-sm"
+                size="large"
+              />
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Modal>
     </div>
   );
 };

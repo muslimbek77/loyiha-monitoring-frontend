@@ -20,6 +20,7 @@ import {
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { useNavigate } from "react-router-dom";
+import Can from "@/shared/components/guards/Can";
 
 interface OxirgiXabar {
   matn: string;
@@ -237,8 +238,6 @@ const ChatXonalarPage = () => {
             }
           : prev,
       );
-      // Navigate to the new room
-      navigate("/chats/" + res.data.id);
     } catch (err: any) {
       messageApi.error(
         err?.response?.data?.detail ?? "Xona yaratishda xatolik",
@@ -284,15 +283,17 @@ const ChatXonalarPage = () => {
                 title={`${totalUnread} ta o'qilmagan xabar`}
               />
             )}
-            <Button
-              type="primary"
-              size="middle"
-              icon={<PlusOutlined />}
-              onClick={() => setCreateModal(true)}
-              className="rounded-lg"
-            >
-              Yangi xona
-            </Button>
+            <Can action="canCreate">
+              <Button
+                type="primary"
+                size="middle"
+                icon={<PlusOutlined />}
+                onClick={() => setCreateModal(true)}
+                className="rounded-lg"
+              >
+                Yangi xona
+              </Button>
+            </Can>
           </div>
         </div>
 
@@ -318,13 +319,13 @@ const ChatXonalarPage = () => {
         {error && (
           <div className="p-4">
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
-              ⚠️ {error}
+              Chat xonalarini olishda xatolik yuz berdi
             </div>
           </div>
         )}
 
         {!loading && !error && filtered?.length === 0 && (
-          <div className="flex items-center justify-center h-32">
+          <div className="flex items-center justify-center h-120">
             <Empty
               description={
                 <span className="text-gray-400 text-sm">Xona topilmadi</span>

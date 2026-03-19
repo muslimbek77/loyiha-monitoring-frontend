@@ -263,7 +263,6 @@ const HujjatSinglePage = () => {
     );
   }
 
-  console.log(data);
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">

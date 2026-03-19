@@ -11,22 +11,31 @@ import {
   Pin,
   Banknote,
 } from "lucide-react";
+import { usePermissions } from "@/features/auth/hooks/usePermissions";
 
-const navItems = [
-  { label: "Bosh sahifa", path: "/", icon: LayoutDashboard },
-  { label: "Boshqarma", path: "/boshqarma", icon: Landmark },
-  { label: "Obyektlar", path: "/obyekt", icon: Building2 },
-  { label: "Hujjatlar", path: "/hujjatlar", icon: FileText },
-  { label: "Bayonnomalar", path: "/bayonnomalar", icon: ClipboardList },
-  { label: "Topshiriqlar", path: "/topshiriqlar", icon: CheckSquare },
-  { label: "Jarimalar", path: "/jarimalar", icon: Banknote },
-  { label: "Chat xonalar", path: "/chats", icon: MessageSquare },
-  { label: "Talablar", path: "/talablar", icon: Pin },
-  { label: "Xodimlar", path: "/users", icon: Users },
+type Permission = "canManageUsers" | "canCreate" | "canUpdate" | "canDelete" | "canRead" | "canManageUsers";
+
+const navItems: { label: string; path: string; icon: any; permission?: Permission }[] = [
+  { label: "Bosh sahifa",  path: "/",             icon: LayoutDashboard },
+  { label: "Boshqarma",   path: "/boshqarma",     icon: Landmark },
+  { label: "Obyektlar",   path: "/obyekt",         icon: Building2 },
+  { label: "Hujjatlar",   path: "/hujjatlar",      icon: FileText },
+  { label: "Bayonnomalar",path: "/bayonnomalar",   icon: ClipboardList },
+  { label: "Topshiriqlar",path: "/topshiriqlar",   icon: CheckSquare },
+  { label: "Jarimalar",   path: "/jarimalar",      icon: Banknote },
+  { label: "Chat xonalar",path: "/chats",           icon: MessageSquare },
+  { label: "Talablar",    path: "/talablar",        icon: Pin },
+  { label: "Xodimlar",    path: "/users",           icon: Users,        permission: "canManageUsers" },
+  { label: "Kategoriyalar",path: "/kategoriyalar", icon: ClipboardList, permission: "canManageUsers" },
 ];
 
 const Sidebar = () => {
   const location = useLocation();
+  const { can } = usePermissions();
+
+  const visibleItems = navItems.filter(
+    (item) => !item.permission || can(item.permission)
+  );
 
   return (
     <div className="flex flex-col justify-between w-[240px] min-h-screen bg-[#0f1117] border-r border-white/10 px-3 py-6 font-sans">
@@ -44,7 +53,7 @@ const Sidebar = () => {
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1.5">
-          {navItems.map(({ label, path, icon: Icon }) => {
+          {visibleItems.map(({ label, path, icon: Icon }) => {
             const isActive =
               path === "/"
                 ? location.pathname === "/"
@@ -64,13 +73,10 @@ const Sidebar = () => {
                   }
                 `}
               >
-                {/* Active Indicator */}
                 {isActive && (
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-indigo-500 rounded-r-sm" />
                 )}
-
                 <Icon size={18} className="opacity-80" />
-
                 {label}
               </Link>
             );

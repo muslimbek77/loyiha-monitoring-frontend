@@ -110,8 +110,8 @@ const XodimlarSinglePage = () => {
 
   const fetchBoshqarmalar = async () => {
     try {
-      const res = await api.get("boshqarmalar/");
-      setBoshqarmalar(res.data);
+      const res = await api.get("core/boshqarmalar/");
+      setBoshqarmalar(res.data.results);
     } catch (error) {
       console.error(error);
     }

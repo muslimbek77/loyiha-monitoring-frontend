@@ -70,7 +70,6 @@ export const AddIzohForm = ({ topshiriqId, onSuccess }: AddIzohFormProps) => {
       handleSubmit();
     }
   };
-  console.log(matn);
 
   return (
     <div

@@ -31,6 +31,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api/axios";
+import Can from "@/shared/components/guards/Can";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -511,7 +512,7 @@ const Talablar = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-1">
           <div>
-            <Title level={3} className="!mb-0 !text-gray-800">
+            <Title level={3} className="mb-0! text-gray-800!">
               Talablar
             </Title>
             <Text className="text-gray-400 text-sm">
@@ -519,14 +520,16 @@ const Talablar = () => {
             </Text>
           </div>
           <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setModalOpen(true)}
-              className="bg-blue-500 hover:bg-blue-600 border-0 shadow-sm rounded-lg"
-            >
-              Yangi talab
-            </Button>
+            <Can action="canCreate">
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setModalOpen(true)}
+                className="bg-blue-500 hover:bg-blue-600 border-0 shadow-sm rounded-lg!"
+              >
+                Yangi talab
+              </Button>
+            </Can>
           </Space>
         </div>
       </div>
@@ -561,7 +564,7 @@ const Talablar = () => {
         ].map((stat) => (
           <Card
             key={stat.label}
-            className="!border-0 !shadow-sm overflow-hidden relative"
+            className="border-0! shadow-sm! overflow-hidden relative"
             bodyStyle={{ padding: "16px 20px" }}
           >
             <div

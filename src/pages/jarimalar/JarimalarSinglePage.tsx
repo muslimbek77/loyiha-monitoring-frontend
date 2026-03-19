@@ -13,12 +13,17 @@ import {
   Switch,
   message,
 } from "antd";
-import { ArrowLeftOutlined, EditOutlined } from "@ant-design/icons";
+import {
+  ArrowLeftOutlined,
+  DeleteOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { formatDate } from "@/shared/components/const/CustomUI";
+import { Delete } from "lucide-react";
 
 const { Title } = Typography;
 
@@ -121,6 +126,16 @@ const JarimalarSinglePage = () => {
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await api.delete(`${API_ENDPOINTS.JARIMALAR.LIST}${id}/`);
+      message.success("Jarima muvaffaqiyatli o'chirildi");
+      navigate("/jarimalar");
+    } catch (error) {
+      message.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -136,19 +151,29 @@ const JarimalarSinglePage = () => {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <Button
-        icon={<ArrowLeftOutlined />}
+        icon={<ArrowLeftOutlined className="w-3 h-2" />}
         onClick={() => navigate(-1)}
-        className="mb-5 border-white/30 text-white hover:bg-white/20 hover:text-white hover:border-white/50 bg-white/10"
+        className="mb-5 border-white/30 text-white py-1.5! rounded-xl! hover:bg-white/20 hover:text-white hover:border-white/50 bg-white/10"
       >
         Orqaga
       </Button>
       <div className="flex items-center justify-between">
-        <Title level={3} className="!mb-0">
+        <Title level={3} className="mb-0!">
           Jarima #{data.id}
         </Title>
-        <Button type="primary" icon={<EditOutlined />} onClick={openEdit}>
-          Tahrirlash
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="primary" icon={<EditOutlined />} onClick={openEdit}>
+            Tahrirlash
+          </Button>
+          <Button
+            type="primary"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={handleDelete}
+          >
+            O'chirish
+          </Button>
+        </div>
       </div>
 
       {/* Basic Info */}

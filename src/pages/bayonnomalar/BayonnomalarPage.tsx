@@ -40,6 +40,7 @@ import {
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { formatDate } from "@/shared/components/const/CustomUI";
+import Can from "@/shared/components/guards/Can";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -355,7 +356,7 @@ const BayonnomalarPage = () => {
         setData(res.data.results);
         setTotal(res.data.count);
       } catch {
-        messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
+        // messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
       } finally {
         setLoading(false);
       }
@@ -370,7 +371,7 @@ const BayonnomalarPage = () => {
       const res = await api.get<UsersApiResponse>("/auth/users/?all=true");
       setUsers(res?.data as unknown as User[]);
     } catch {
-      messageApi.error("Foydalanuvchilarni yuklashda xatolik.");
+      // messageApi.error("Foydalanuvchilarni yuklashda xatolik.");
     } finally {
       setUsersLoading(false);
     }
@@ -454,7 +455,7 @@ const BayonnomalarPage = () => {
       getBayonnomalar(currentPage, searchValue, ordering);
     } catch (err: unknown) {
       if (err && typeof err === "object" && "errorFields" in err) return;
-      messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
+      // messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
     } finally {
       setSubmitting(false);
     }
@@ -510,7 +511,7 @@ const BayonnomalarPage = () => {
       getBayonnomalar(currentPage, searchValue, ordering);
     } catch (err: unknown) {
       if (err && typeof err === "object" && "errorFields" in err) return;
-      messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
+      // messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
     } finally {
       setSubmitting(false);
     }
@@ -527,7 +528,7 @@ const BayonnomalarPage = () => {
       setCurrentPage(newPage);
       getBayonnomalar(newPage, searchValue, ordering);
     } catch {
-      messageApi.error("O'chirishda xatolik yuz berdi.");
+      // messageApi.error("O'chirishda xatolik yuz berdi.");
     }
   };
 
@@ -540,7 +541,6 @@ const BayonnomalarPage = () => {
       : 0;
   const completed = data.filter((d) => d.bajarilish_foizi === 100).length;
   const totalTasks = data.reduce((s, d) => s + d.topshiriqlar_soni, 0);
-
   // ── Table columns ──────────────────────────────────────────────────────────
   const columns: ColumnsType<Bayonnoma> = [
     {
@@ -744,14 +744,16 @@ const BayonnomalarPage = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setCreateOpen(true)}
-              className="rounded-xl! h-9! px-5! font-semibold! bg-indigo-600! border-indigo-600! hover:bg-indigo-700!"
-            >
-              Yangi bayonnoma yaratish
-            </Button>
+            <Can action="canCreate">
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setCreateOpen(true)}
+                className="rounded-xl! h-9! px-5! font-semibold! bg-indigo-600! border-indigo-600! hover:bg-indigo-700!"
+              >
+                Yangi bayonnoma yaratish
+              </Button>
+            </Can>
           </div>
         </div>
 

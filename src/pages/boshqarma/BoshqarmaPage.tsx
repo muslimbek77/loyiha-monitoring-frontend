@@ -57,8 +57,8 @@ const BoshqarmaPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/core/boshqarmalar/");
-      const sorted = response.data.results.sort(
+      const response = await api.get("/core/boshqarmalar/?all=true");
+      const sorted = response.data.sort(
         (a: Boshqarma, b: Boshqarma) => b.reyting - a.reyting,
       );
       setData(sorted);
@@ -98,9 +98,14 @@ const BoshqarmaPage = () => {
     <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
       {/* Page header */}
       <div className="mb-8">
-        <p className="text-[11px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-1">
-          Tashkilot tuzilmasi
-        </p>
+        <div className="flex flex-col">
+          <p className="text-[11px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-1">
+            Tashkilot tuzilmasi
+          </p>
+          <span className="text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-1">
+            {data.length} ta boshqarma
+          </span>
+        </div>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
             Boshqarmalar Reytingi

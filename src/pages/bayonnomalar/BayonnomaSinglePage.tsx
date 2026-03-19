@@ -41,6 +41,7 @@ import {
 } from "./Const";
 import BayonnomaEditModal from "./BayonnomaEditModal";
 import TopshiriqQoshishModal from "./TopshiriqQushishModal";
+import Can from "@/shared/components/guards/Can";
 
 const { Title, Text } = Typography;
 
@@ -162,13 +163,15 @@ const BayonnomaSinglePage = () => {
           </Tag>
         </div>
 
-        <button
-          className="ml-auto flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer"
-          onClick={() => setEditOpen(true)}
-        >
-          <EditOutlined className="text-indigo-500  cursor-pointer hover:text-indigo-700" />{" "}
-          Tahrirlash
-        </button>
+        <Can action="canCreate">
+          <button
+            className="ml-auto flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer"
+            onClick={() => setEditOpen(true)}
+          >
+            <EditOutlined className="text-indigo-500  cursor-pointer hover:text-indigo-700" />{" "}
+            Tahrirlash
+          </button>
+        </Can>
       </div>
 
       {/* ── Hero header ── */}
@@ -420,12 +423,15 @@ const BayonnomaSinglePage = () => {
             </div>
 
             {/* ← NEW button */}
-            <button
-              onClick={() => setAddOpen(true)}
-              className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer"
-            >
-              <PlusOutlined /> Topshiriq qo'shish
-            </button>
+
+            <Can action="canCreate">
+              <button
+                onClick={() => setAddOpen(true)}
+                className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer"
+              >
+                <PlusOutlined /> Topshiriq qo'shish
+              </button>
+            </Can>
           </div>
 
           {data.topshiriqlar.length === 0 ? (
