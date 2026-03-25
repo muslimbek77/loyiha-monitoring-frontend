@@ -9,6 +9,7 @@ import {
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { IzohCard } from "./Const";
+import Can from "@/shared/components/guards/Can";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -79,92 +80,86 @@ export const AddIzohForm = ({ topshiriqId, onSuccess }: AddIzohFormProps) => {
           : "border-slate-200"
       } bg-white`}
     >
-      <textarea
-        rows={2}
-        value={matn}
-        onChange={(e) => setMatn(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onKeyDown={handleKeyDown}
-        placeholder="Izoh yozing… (Ctrl+Enter — yuborish)"
-        disabled={loading}
-        className="w-full resize-none px-4 pt-3 pb-2 text-sm text-slate-700 placeholder-slate-300 outline-none bg-transparent leading-relaxed"
-      />
+      {
+        <Can action="canCreate">
+          <textarea
+            rows={2}
+            value={matn}
+            onChange={(e) => setMatn(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={handleKeyDown}
+            placeholder="Izoh yozing… (Ctrl+Enter — yuborish)"
+            disabled={loading}
+            className="w-full resize-none px-4 pt-3 pb-2 text-sm text-slate-700 placeholder-slate-300 outline-none bg-transparent leading-relaxed"
+          />
+          <div className="flex items-center justify-between px-3 pb-2.5 gap-2">
+            <div className="flex items-center gap-2">
+              {/* File attach */}
+              <Tooltip title="Fayl biriktirish">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading}
+                  className="flex items-center justify-center h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 transition-colors cursor-pointer"
+                >
+                  <PaperClipOutlined />
+                </button>
+              </Tooltip>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => setFayl(e.target.files?.[0] ?? null)}
+              />
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 pb-2.5 gap-2">
-        <div className="flex items-center gap-2">
-          {/* File attach */}
-          <Tooltip title="Fayl biriktirish">
+              {/* Selected file pill */}
+              {fayl && (
+                <span className="flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-600 max-w-[160px]">
+                  <PaperClipOutlined className="shrink-0" />
+                  <span className="truncate">{fayl.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFayl(null)}
+                    className="shrink-0 text-indigo-400 hover:text-indigo-600 cursor-pointer"
+                  >
+                    <CloseOutlined style={{ fontSize: 10 }} />
+                  </button>
+                </span>
+              )}
+            </div>
+
+            {/* Submit button */}
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading}
-              className="flex items-center justify-center h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 transition-colors cursor-pointer"
+              onClick={handleSubmit}
+              disabled={loading || !matn.trim()}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                matn.trim() && !loading
+                  ? "bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm"
+                  : "bg-slate-100 text-slate-300 cursor-not-allowed"
+              }`}
             >
-              <PaperClipOutlined />
-            </button>
-          </Tooltip>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={(e) => setFayl(e.target.files?.[0] ?? null)}
-          />
-
-          {/* Selected file pill */}
-          {fayl && (
-            <span className="flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-600 max-w-[160px]">
-              <PaperClipOutlined className="shrink-0" />
-              <span className="truncate">{fayl.name}</span>
-              <button
-                type="button"
-                onClick={() => setFayl(null)}
-                className="shrink-0 text-indigo-400 hover:text-indigo-600 cursor-pointer"
-              >
-                <CloseOutlined style={{ fontSize: 10 }} />
-              </button>
-            </span>
-          )}
-        </div>
-
-        {/* Submit button */}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={loading || !matn.trim()}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-            matn.trim() && !loading
-              ? "bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm"
-              : "bg-slate-100 text-slate-300 cursor-not-allowed"
-          }`}
-        >
-          {loading ? (
-            <Spin
-              indicator={
-                <LoadingOutlined
-                  style={{ fontSize: 12, color: "white" }}
-                  spin
+              {loading ? (
+                <Spin
+                  indicator={
+                    <LoadingOutlined
+                      style={{ fontSize: 12, color: "white" }}
+                      spin
+                    />
+                  }
                 />
-              }
-            />
-          ) : (
-            <SendOutlined style={{ fontSize: 11 }} />
-          )}
-          Yuborish
-        </button>
-      </div>
+              ) : (
+                <SendOutlined style={{ fontSize: 11 }} />
+              )}
+              Yuborish
+            </button>
+          </div>
+        </Can>
+      }
     </div>
   );
 };
-
-// ─── Usage inside TopshiriqCard ───────────────────────────────────────────────
-// Replace the existing izohlar section at the bottom of TopshiriqCard with:
-//
-//   {/* Izohlar (comments) */}
-//   <IzohlarSection topshiriqId={t.id} initialIzohlar={t.izohlar ?? []} />
-//
-// And add this component to your Const.tsx / the same file:
 
 interface IzohlarSectionProps {
   topshiriqId: number;

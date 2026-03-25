@@ -23,6 +23,7 @@ import {
   RightOutlined,
   EditOutlined,
 } from "@ant-design/icons";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -171,6 +172,11 @@ function AddModal({
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { user } = useAuth();
+  const filteredBoshqarmalar =
+    user?.boshqarma && user.lavozim !== "rais"
+      ? boshqarmalar.filter((b) => b.id === user.boshqarma)
+      : boshqarmalar;
 
   // Flatten categories for parent select
   const flatCats: Kategoriya[] = [];
@@ -278,7 +284,10 @@ function AddModal({
             placeholder="— tanlang —"
             showSearch
             optionFilterProp="label"
-            options={boshqarmalar.map((b) => ({ value: b.id, label: b.nomi }))}
+            options={filteredBoshqarmalar.map((b) => ({
+              value: b.id,
+              label: b.nomi,
+            }))}
           />
         </Form.Item>
 
@@ -682,7 +691,7 @@ const KategoriyalarPage = () => {
   return (
     <div className="min-h-screen bg-slate-100 font-sans">
       {/* ── Top bar ── */}
-      <div className="bg-white border-b border-slate-200 px-7 py-4 flex items-center justify-between sticky top-0 z-10">
+      <div className="bg-white border-b border-slate-200 px-7 py-4 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-400 flex items-center justify-center shadow-md shadow-indigo-200">
             <FolderOpenFilled className="text-white text-base" />

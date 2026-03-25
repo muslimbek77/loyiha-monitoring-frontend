@@ -20,6 +20,15 @@ type DashboardStats = {
   ai_xulosa: string;
 };
 
+type ReytingItem = {
+  id: number;
+  nomi: string;
+  qisqa_nomi: string;
+  reyting: number;
+  jarimalar_soni: number;
+  topshiriqlar_bajarilish: number;
+};
+
 const SECTIONS = [
   {
     key: "obyektlar",
@@ -173,7 +182,7 @@ const SECTIONS = [
         title: "Eng yomon boshqarma",
         value: s.eng_yomon_boshqarma,
         variant: "warning",
-        href: "/jarimalar?filter=eng_yomon",
+        href: "/boshqarma",
       },
     ],
   },
@@ -219,9 +228,32 @@ const variantConfig: Record<
   },
 };
 
+// Returns color classes based on reyting score
+const getReytingColor = (reyting: number) => {
+  if (reyting >= 80)
+    return {
+      bar: "bg-emerald-400",
+      text: "text-emerald-600",
+      bg: "bg-emerald-50",
+    };
+  if (reyting >= 50)
+    return { bar: "bg-amber-400", text: "text-amber-600", bg: "bg-amber-50" };
+  return { bar: "bg-rose-400", text: "text-rose-600", bg: "bg-rose-50" };
+};
+
+const getRankIcon = (index: number) => {
+  if (index === 0) return { emoji: "🥇", cls: "text-yellow-500" };
+  if (index === 1) return { emoji: "🥈", cls: "text-slate-400" };
+  if (index === 2) return { emoji: "🥉", cls: "text-amber-600" };
+  return null;
+};
+
 const DashboardPage = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [reyting, setReyting] = useState<ReytingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reytingLoading, setReytingLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -234,7 +266,22 @@ const DashboardPage = () => {
         setLoading(false);
       }
     };
+
+    const fetchReyting = async () => {
+      try {
+        const res = await api.get("/analytics/reyting/");
+        // Sort descending by reyting score
+        const sorted = [...res.data].sort((a, b) => b.reyting - a.reyting);
+        setReyting(sorted);
+      } catch (error) {
+        console.error("Reyting olishda xatolik:", error);
+      } finally {
+        setReytingLoading(false);
+      }
+    };
+
     fetchStats();
+    fetchReyting();
   }, []);
 
   if (loading) {
@@ -268,7 +315,6 @@ const DashboardPage = () => {
       <div className="space-y-8">
         {SECTIONS.map((section) => (
           <div key={section.key}>
-            {/* Section label */}
             <div className="flex items-center gap-2 mb-3">
               <span className="text-slate-400">{section.icon}</span>
               <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -276,7 +322,6 @@ const DashboardPage = () => {
               </span>
               <div className="flex-1 h-px bg-slate-200 ml-1" />
             </div>
-
             <Row gutter={[14, 14]}>
               {section.cards(stats).map((card) => (
                 <Col xs={24} md={8} key={card.title}>
@@ -291,6 +336,129 @@ const DashboardPage = () => {
             </Row>
           </div>
         ))}
+
+        {/* Reyting */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-slate-400">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Boshqarmalar reytingi
+            </span>
+            <div className="flex-1 h-px bg-slate-200 ml-1" />
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            {reytingLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Spin />
+              </div>
+            ) : reyting.length === 0 ? (
+              <div className="p-5 text-center text-slate-400 text-sm">
+                Ma'lumot topilmadi
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {/* Table header */}
+                <div className="grid grid-cols-12 gap-3 px-5 py-3 bg-slate-50">
+                  <div className="col-span-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    #
+                  </div>
+                  <div className="col-span-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Boshqarma
+                  </div>
+                  <div className="col-span-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Reyting
+                  </div>
+                  <div className="col-span-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 text-center">
+                    Jarimalar
+                  </div>
+                </div>
+
+                {/* Table rows */}
+                {reyting.map((item, index) => {
+                  const colors = getReytingColor(item.reyting);
+                  const rankIcon = getRankIcon(index);
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => navigate(`/boshqarma/${item.id}`)}
+                      className="grid grid-cols-12 gap-3 px-5 py-3.5 items-center hover:bg-slate-50 transition-colors duration-150 cursor-pointer"
+                    >
+                      {/* Rank */}
+                      <div className="col-span-1 flex items-center">
+                        {rankIcon ? (
+                          <span className="text-base leading-none">
+                            {rankIcon.emoji}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-400">
+                            {index + 1}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Name */}
+                      <div className="col-span-4">
+                        <p className="text-sm font-medium text-slate-700 leading-tight">
+                          {item.nomi}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          {item.qisqa_nomi}
+                        </p>
+                      </div>
+
+                      {/* Reyting bar */}
+                      <div className="col-span-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
+                              style={{
+                                width: `${Math.min(item.reyting, 100)}%`,
+                              }}
+                            />
+                          </div>
+                          <span
+                            className={`text-xs font-bold tabular-nums ${colors.text} min-w-[36px] text-right`}
+                          >
+                            {item.reyting.toFixed(1)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Jarimalar */}
+                      <div className="col-span-3 text-center">
+                        <span
+                          className={`inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            item.jarimalar_soni > 0
+                              ? "bg-rose-50 text-rose-500"
+                              : "bg-slate-100 text-slate-400"
+                          }`}
+                        >
+                          {item.jarimalar_soni}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* AI Xulosa */}
         <div>
@@ -372,7 +540,6 @@ const StatCard = ({
         ${href ? "cursor-pointer hover:scale-[1.02] active:scale-[0.99]" : ""}
       `}
     >
-      {/* Left accent bar */}
       <div
         className={`absolute left-0 top-4 bottom-4 w-[3px] rounded-r-full ${cfg.leftBar}`}
       />
@@ -392,7 +559,6 @@ const StatCard = ({
         {value}
       </p>
 
-      {/* Arrow hint on hover */}
       {href && (
         <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
           <svg

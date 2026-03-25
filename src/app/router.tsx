@@ -21,7 +21,6 @@ import BayonnomaSinglePage from "@/pages/bayonnomalar/BayonnomaSinglePage";
 import XodimlarPage from "@/pages/xodimlar/XodimlarPage";
 import XodimlarSinglePage from "@/pages/xodimlar/XodimlarSinglePage";
 import BoshqarmaSinglePage from "@/pages/boshqarma/BoshqarmaSinglePage";
-import Test from "@/pages/test/Test";
 import ChatXonalarPage from "@/pages/chatXonalar/ChatXonalarPage";
 import ChatXonalarSinglePage from "@/pages/chatXonalar/ChatXonalarSinglePage";
 import TopshiriqDetailPage from "@/pages/topshiriqlar/TopshiriqDetailPage";
@@ -87,9 +86,11 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: (
-          <Suspense fallback={<PageLoader />}>
-            <DashboardPage />
-          </Suspense>
+          <RoleGuard action="canManageUsers" redirectTo="/unauthorized">
+            <Suspense fallback={<PageLoader />}>
+              <DashboardPage />
+            </Suspense>
+          </RoleGuard>
         ),
       },
       {

@@ -206,7 +206,14 @@ const Talablar = () => {
   const handleCreate = async (values: TalabCreatePayload) => {
     setSubmitting(true);
     try {
-      const res = await api.post<Talab>("talablar/", values);
+      const payload = {
+        ...values,
+        muddat: values.muddat
+          ? values.muddat.format("YYYY-MM-DD")
+          : undefined,
+      };
+
+      const res = await api.post<Talab>("talablar/", payload);
       setData((prev) => [res.data, ...prev]);
       notifApi.success({
         message: "Talab muvaffaqiyatli yaratildi",

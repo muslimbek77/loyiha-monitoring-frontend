@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { Spin, Modal, Form, Input, message } from "antd";
 import {
   PlusOutlined,
@@ -8,6 +8,8 @@ import {
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { useNavigate } from "react-router-dom";
+import Can from "@/shared/components/guards/Can";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 interface Boshqarma {
   id: number;
@@ -53,6 +55,9 @@ const BoshqarmaPage = () => {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
+  const { user } = useAuth();
+
+  const hasAccess = user?.lavozim !== "pto";
 
   const fetchData = async () => {
     try {
@@ -103,20 +108,22 @@ const BoshqarmaPage = () => {
             Tashkilot tuzilmasi
           </p>
           <span className="text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-1">
-            {data.length} ta boshqarma
+            <strong>{data.length}</strong> ta boshqarma
           </span>
         </div>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
             Boshqarmalar Reytingi
           </h1>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-xl transition-colors duration-150 cursor-pointer"
-          >
-            <PlusOutlined className="text-xs" />
-            Yangi boshqarma
-          </button>
+          <Can action="canCreate">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-xl transition-colors duration-150 cursor-pointer"
+            >
+              <PlusOutlined className="text-xs" />
+              Yangi boshqarma
+            </button>
+          </Can>
         </div>
       </div>
 
@@ -129,7 +136,9 @@ const BoshqarmaPage = () => {
           return (
             <div
               key={item.id}
-              onClick={() => navigate(`${item.id}`)}
+              onClick={() =>
+                hasAccess ? navigate(`${item.id}`) : navigate("/unauthorized")
+              }
               className={`
                 relative bg-white rounded-2xl border cursor-pointer
                 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden

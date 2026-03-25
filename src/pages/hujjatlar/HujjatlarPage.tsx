@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, use } from "react";
 import {
   Table,
   Pagination,
@@ -24,6 +24,7 @@ import {
   CloseOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 interface Hujjat {
   id: number;
@@ -121,6 +122,8 @@ const HujjatlarPage = () => {
   >([]);
   const [kategoriyaLoading, setKategoriyaLoading] = useState(false);
 
+  const { user } = useAuth();
+
   // Add this handler:
   const handleBoshqarmaChange = async (val: string) => {
     form.setFieldValue("boshqarma", val);
@@ -150,6 +153,13 @@ const HujjatlarPage = () => {
   };
 
   const [form] = Form.useForm();
+
+  useEffect(() => {
+    if (user?.boshqarma) {
+      form.setFieldValue("boshqarma", String(user.boshqarma));
+      handleBoshqarmaChange(String(user.boshqarma));
+    }
+  }, [user]);
   const navigate = useNavigate();
 
   const activeFilterCount = Object.entries(filters).filter(
@@ -477,7 +487,7 @@ const HujjatlarPage = () => {
 
           {/* Replace the grid with boshqarma and kategoriya */}
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item
+           <Form.Item
               name="boshqarma"
               label={<FieldLabel>Boshqarma</FieldLabel>}
               rules={[{ required: true, message: "Boshqarma majburiy" }]}
@@ -485,7 +495,14 @@ const HujjatlarPage = () => {
               <Select
                 showSearch
                 placeholder="Boshqarmani tanlang"
-                options={boshqarmalarOptions}
+                options={
+                  user?.boshqarma && user.lavozim !== "rais"
+                    ? boshqarmalarOptions.filter(
+                        (b) => b.value === String(user.boshqarma),
+                      )
+                    : boshqarmalarOptions
+                }
+                // disabled={!!user?.boshqarma}
                 onChange={handleBoshqarmaChange}
                 filterOption={(input, opt) =>
                   (opt?.label as string)

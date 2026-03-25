@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { LAVOZIM_OPTIONS } from "@/shared/components/const/constValues";
 
 const { Option } = Select;
 
@@ -25,14 +26,6 @@ interface AddUserModalProps {
   onClose: () => void;
   onSuccess: () => void;
 }
-
-const LAVOZIMLAR = [
-  { value: "rais", label: "Rais" },
-  { value: "direktor", label: "Direktor" },
-  { value: "menejer", label: "Menejer" },
-  { value: "mutaxassis", label: "Mutaxassis" },
-  { value: "xodim", label: "Xodim" },
-];
 
 const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
   const [form] = Form.useForm();
@@ -206,7 +199,7 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
               rules={[{ required: true, message: "Lavozimni tanlang" }]}
             >
               <Select placeholder="Lavozimni tanlang" size="large">
-                {LAVOZIMLAR.map((l) => (
+                {LAVOZIM_OPTIONS.map((l) => (
                   <Option key={l.value} value={l.value}>
                     {l.label}
                   </Option>

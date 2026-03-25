@@ -20,7 +20,7 @@ export default function RoleGuard({
   const { user } = useAuth();
   const role = user?.lavozim ?? "viewer";
   const perms = PERMISSIONS[role] ?? PERMISSIONS.viewer;
-  console.log(user);
+  // console.log(user);
 
   if (!perms[action]) {
     return <Navigate to={redirectTo} replace />;

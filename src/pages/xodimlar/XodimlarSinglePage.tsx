@@ -368,7 +368,7 @@ const XodimlarSinglePage = () => {
         okButtonProps={{
           className: "!bg-slate-800 !border-slate-800 hover:!bg-slate-700",
         }}
-        width={520}
+        width={620}
         destroyOnClose
       >
         <Form form={form} layout="vertical" className="pt-2">
@@ -439,7 +439,7 @@ const XodimlarSinglePage = () => {
           <Form.Item label={<FormLabel>Avatar</FormLabel>}>
             <Upload {...uploadProps}>
               {avatarFileList.length === 0 && (
-                <button className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-medium rounded-lg transition-all">
+                <button className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-medium rounded-lg transition-all cursor-pointer!">
                   <UploadOutlined />
                   Rasm yuklash
                 </button>

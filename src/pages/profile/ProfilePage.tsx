@@ -329,18 +329,6 @@ const ProfilePage = () => {
                     </span>
                   </div>
 
-                  {/* Quick Stats */}
-                  <div className="w-full mt-6 pt-6 border-t border-gray-200 space-y-3">
-                    {user.boshqarma && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Boshqarma</span>
-                        <span className="font-semibold text-gray-900">
-                          {user.boshqarma}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Action Buttons */}
                   <div className="w-full mt-6 space-y-3">
                     <button
@@ -787,8 +775,8 @@ const ProfilePage = () => {
                     </svg>
                   }
                   label="Bo'lim"
-                  value={user.boshqarma || "Belgilanmagan"}
-                  isEmpty={!user.boshqarma}
+                  value={user.boshqarma_nomi || "Belgilanmagan"}
+                  isEmpty={!user.boshqarma_nomi}
                 />
               </div>
             </div>

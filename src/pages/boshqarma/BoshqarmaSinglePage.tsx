@@ -10,6 +10,9 @@ import {
   ClockCircleOutlined,
   EditOutlined,
   DeleteOutlined,
+  WarningOutlined,
+  MinusCircleOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 
@@ -39,6 +42,14 @@ interface BoshqarmaType {
   id: number;
   nomi: string;
   qisqa_nomi: string;
+}
+
+interface StatistikaType {
+  xodimlar_soni: number;
+  hujjatlar_soni: number;
+  jarimalar_soni: number;
+  jami_minus: number;
+  bajarilmagan_topshiriqlar: number;
 }
 
 interface BoshqarmaUpdatePayload {
@@ -72,6 +83,49 @@ const HOLAT_CONFIG: Record<
   },
 };
 
+const STAT_CARDS = [
+  {
+    key: "xodimlar_soni" as keyof StatistikaType,
+    label: "Xodimlar",
+    icon: <TeamOutlined />,
+    bg: "bg-blue-50",
+    text: "text-blue-600",
+    iconBg: "bg-blue-100",
+  },
+  {
+    key: "hujjatlar_soni" as keyof StatistikaType,
+    label: "Hujjatlar",
+    icon: <FileOutlined />,
+    bg: "bg-violet-50",
+    text: "text-violet-600",
+    iconBg: "bg-violet-100",
+  },
+  {
+    key: "jarimalar_soni" as keyof StatistikaType,
+    label: "Jarimalar",
+    icon: <WarningOutlined />,
+    bg: "bg-amber-50",
+    text: "text-amber-600",
+    iconBg: "bg-amber-100",
+  },
+  {
+    key: "jami_minus" as keyof StatistikaType,
+    label: "Jami minus",
+    icon: <MinusCircleOutlined />,
+    bg: "bg-red-50",
+    text: "text-red-500",
+    iconBg: "bg-red-100",
+  },
+  {
+    key: "bajarilmagan_topshiriqlar" as keyof StatistikaType,
+    label: "Bajarilmagan topshiriqlar",
+    icon: <ExclamationCircleOutlined />,
+    bg: "bg-orange-50",
+    text: "text-orange-500",
+    iconBg: "bg-orange-100",
+  },
+];
+
 const BoshqarmaSinglePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -83,6 +137,9 @@ const BoshqarmaSinglePage = () => {
 
   const [hujjatlar, setHujjatlar] = useState<HujjatType[]>([]);
   const [hujjatlarLoading, setHujjatlarLoading] = useState(false);
+
+  const [statistika, setStatistika] = useState<StatistikaType | null>(null);
+  const [statistikaLoading, setStatistikaLoading] = useState(false);
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -137,6 +194,20 @@ const BoshqarmaSinglePage = () => {
     }
   };
 
+  const fetchStatistika = async () => {
+    try {
+      setStatistikaLoading(true);
+      const res = await api.get<StatistikaType>(
+        `core/boshqarmalar/${id}/statistika/`,
+      );
+      setStatistika(res.data);
+    } catch (error) {
+      console.error("Error fetching statistika:", error);
+    } finally {
+      setStatistikaLoading(false);
+    }
+  };
+
   const handleEditSubmit = async () => {
     try {
       const values = await form.validateFields();
@@ -173,6 +244,7 @@ const BoshqarmaSinglePage = () => {
     if (id) {
       fetchUsers();
       fetchHujjatlar();
+      fetchStatistika();
     }
   }, [id]);
 
@@ -215,19 +287,6 @@ const BoshqarmaSinglePage = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {users.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">
-                <TeamOutlined className="text-[11px]" />
-                {users.length} ta xodim
-              </span>
-            )}
-            {hujjatlar.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-semibold rounded-full">
-                <FileOutlined className="text-[11px]" />
-                {hujjatlar.length} ta hujjat
-              </span>
-            )}
-
             {/* Edit button */}
             <button
               onClick={handleEditOpen}
@@ -245,6 +304,38 @@ const BoshqarmaSinglePage = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* ── STATISTIKA CARDS ── */}
+      <div className="mb-6">
+        {statistikaLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <Spin size="small" />
+          </div>
+        ) : statistika ? (
+          <div className="grid grid-cols-5 gap-3">
+            {STAT_CARDS.map((card) => (
+              <div
+                key={card.key}
+                className={`${card.bg} rounded-2xl px-4 py-4 flex items-center gap-3 border border-white shadow-sm`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-xl ${card.iconBg} flex items-center justify-center flex-shrink-0 ${card.text} text-base`}
+                >
+                  {card.icon}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium text-slate-400 leading-none mb-1 truncate">
+                    {card.label}
+                  </p>
+                  <p className={`text-xl font-bold leading-none ${card.text}`}>
+                    {statistika[card.key]}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {/* Tabs */}
@@ -314,7 +405,14 @@ const BoshqarmaSinglePage = () => {
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                          <UserOutlined className="text-slate-400 text-xs" />
+                          {user.avatar ? (
+                            <img
+                              className="rounded-full w-full h-full"
+                              src={user.avatar.replace("http", "https")}
+                            />
+                          ) : (
+                            <UserOutlined className="text-slate-400 text-xs" />
+                          )}
                         </div>
                         <span className="text-sm font-semibold text-slate-700">
                           {user.fio}
@@ -385,7 +483,8 @@ const BoshqarmaSinglePage = () => {
                 return (
                   <tr
                     key={doc.id}
-                    className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors duration-100"
+                    className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors duration-100 cursor-pointer"
+                    onClick={() => navigate(`/hujjatlar/${doc.id}`)}
                   >
                     <td className="px-4 py-3.5">
                       <span className="text-xs font-medium text-slate-400 tabular-nums">
@@ -397,10 +496,7 @@ const BoshqarmaSinglePage = () => {
                         <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
                           <FileOutlined className="text-slate-400 text-xs" />
                         </div>
-                        <button
-                          onClick={() => navigate(`/hujjatlar/${doc.id}`)}
-                          className="text-sm text-start cursor-pointer hover:underline hover:text-slate-900 font-semibold text-slate-700 line-clamp-2"
-                        >
+                        <button className="text-sm text-start cursor-pointer hover:underline hover:text-slate-900 font-semibold text-slate-700 line-clamp-2">
                           {doc.nomi}
                         </button>
                       </div>

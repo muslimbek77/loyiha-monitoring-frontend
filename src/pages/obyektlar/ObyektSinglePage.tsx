@@ -14,6 +14,7 @@ import {
   LoadingOutlined,
 } from "@ant-design/icons";
 import { UZBEKISTAN_LOCATIONS } from "@/shared/components/const/constValues";
+import Can from "@/shared/components/guards/Can";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -263,6 +264,16 @@ const ObyektEditPage = () => {
       message.error(detail);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await api.delete(`${API_ENDPOINTS.OBYEKTLAR.LIST}${id}/`);
+      message.success("Obyekt muvaffaqiyatli o'chirildi");
+      navigate("/obyekt");
+    } catch (err: any) {
+      console.error(err);
     }
   };
 
@@ -635,7 +646,6 @@ const ObyektEditPage = () => {
           {/* ── Tavsif ── */}
           <SectionDivider title="Tavsif" />
           <div>
-            <Label>Tavsif</Label>
             <Textarea
               name="tavsif"
               value={form.tavsif}
@@ -645,20 +655,30 @@ const ObyektEditPage = () => {
           </div>
 
           {/* ── Action buttons ── */}
-          <div className="mt-2 pt-5 border-t border-slate-100 flex items-center justify-end gap-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-200 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {saving ? (
-                <LoadingOutlined className="text-xs" />
-              ) : (
-                <CheckOutlined className="text-xs" />
-              )}
-              {saving ? "Saqlanmoqda..." : "Saqlash"}
-            </button>
-          </div>
+          <Can action="canManageUsers">
+            <div className="mt-2 pt-5 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button
+                onClick={handleDelete}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white text-sm font-semibold shadow-sm shadow-rose-200 transition-all duration-200 cursor-pointer"
+              >
+                <CloseOutlined className="text-xs" />
+                O'chirish
+              </button>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-200 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {saving ? (
+                  <LoadingOutlined className="text-xs" />
+                ) : (
+                  <CheckOutlined className="text-xs" />
+                )}
+                {saving ? "Saqlanmoqda..." : "Saqlash"}
+              </button>
+            </div>
+          </Can>
         </div>
       </form>
     </div>

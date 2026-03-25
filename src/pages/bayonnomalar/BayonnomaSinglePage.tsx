@@ -152,6 +152,7 @@ const BayonnomaSinglePage = () => {
         >
           <ArrowLeftOutlined /> Orqaga
         </button>
+
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <span>Bayonnomalar</span>
           <span>/</span>
@@ -339,9 +340,10 @@ const BayonnomaSinglePage = () => {
                   label="Fayl"
                   value={
                     <a
-                      href={data.fayl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      href={data.fayl}
+                      download
                       className="text-indigo-500 hover:text-indigo-700 transition-colors flex items-center gap-1 text-sm"
                     >
                       <PaperClipOutlined /> Yuklash

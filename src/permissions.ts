@@ -17,10 +17,20 @@ export const PERMISSIONS = {
     canDelete: true,
     canManageUsers: true,
   },
-  manager: {
-    canCreate: true,
+  rais_orinbosari: {
+    canCreate: false,
+    canCreateTopshiriq: false,
+    canCreateBayonnoma: false,
     canRead: true,
     canUpdate: true,
+    canDelete: false,
+    canManageUsers: true,
+    canSeeUsers: false,
+  },
+  pto: {
+    canCreate: false,
+    canRead: true,
+    canUpdate: false,
     canDelete: false,
     canManageUsers: false,
   },

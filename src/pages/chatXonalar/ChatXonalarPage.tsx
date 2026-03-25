@@ -46,6 +46,20 @@ interface ApiResponse {
   results: Xona[];
 }
 
+interface Obyekt {
+  id: number;
+  nomi: string;
+}
+
+interface User {
+  id: number;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  fio: string;
+}
+
 const formatTime = (isoString: string) => {
   const date = new Date(isoString);
   const now = new Date();
@@ -80,6 +94,13 @@ const getAvatarColor = (name: string) => {
     "#f5222d",
   ];
   return colors[name.charCodeAt(0) % colors.length];
+};
+
+const getUserLabel = (user: User): string => {
+  if (user.fio) return user.fio;
+  const parts = [user.first_name, user.last_name].filter(Boolean);
+  if (parts.length > 0) return parts.join(" ");
+  return user.username ?? `User #${user.id}`;
 };
 
 const XonaCard = ({
@@ -192,9 +213,25 @@ const ChatXonalarPage = () => {
   const [createForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
+  // ── Dropdown data
+  const [obyektlar, setObyektlar] = useState<Obyekt[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [obyektlarLoading, setObyektlarLoading] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
+
+  const xonaTuri = Form.useWatch("turi", createForm);
+
   useEffect(() => {
     fetchXonalar();
   }, []);
+
+  // Fetch obyektlar and users when modal opens
+  useEffect(() => {
+    if (createModal) {
+      fetchObyektlar();
+      fetchUsers();
+    }
+  }, [createModal]);
 
   const fetchXonalar = async () => {
     try {
@@ -207,6 +244,33 @@ const ChatXonalarPage = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchObyektlar = async () => {
+    setObyektlarLoading(true);
+    try {
+      const res = await api.get<{ results: Obyekt[] } | Obyekt[]>("obyektlar/");
+      // Handle both paginated and plain array responses
+      const list = Array.isArray(res.data) ? res.data : res.data.results;
+      setObyektlar(list);
+    } catch {
+      // silently fail — field will remain empty
+    } finally {
+      setObyektlarLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await api.get<{ results: User[] } | User[]>("auth/users/");
+      const list = Array.isArray(res.data) ? res.data : res.data.results;
+      setUsers(list);
+    } catch {
+      // silently fail
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -228,7 +292,6 @@ const ChatXonalarPage = () => {
       messageApi.success("Xona muvaffaqiyatli yaratildi");
       setCreateModal(false);
       createForm.resetFields();
-      // Prepend new xona to list
       setData((prev) =>
         prev
           ? {
@@ -245,6 +308,11 @@ const ChatXonalarPage = () => {
     } finally {
       setCreateLoading(false);
     }
+  };
+
+  const handleModalClose = () => {
+    setCreateModal(false);
+    createForm.resetFields();
   };
 
   const filtered = data?.results.filter((x) =>
@@ -368,10 +436,7 @@ const ChatXonalarPage = () => {
           </div>
         }
         open={createModal}
-        onCancel={() => {
-          setCreateModal(false);
-          createForm.resetFields();
-        }}
+        onCancel={handleModalClose}
         footer={null}
         destroyOnClose
       >
@@ -402,32 +467,43 @@ const ChatXonalarPage = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item name="obyekt" label="Obyekt ID (ixtiyoriy)">
-            <Input type="number" placeholder="Obyekt ID" />
-          </Form.Item>
+          {/* Obyekt field — only shown when turi === "obyekt" */}
+          {xonaTuri === "obyekt" && (
+            <Form.Item
+              name="obyekt"
+              label="Obyekt"
+              rules={[{ required: true, message: "Obyektni tanlang" }]}
+            >
+              <Select
+                placeholder="Obyektni tanlang"
+                loading={obyektlarLoading}
+                showSearch
+                optionFilterProp="label"
+                options={obyektlar.map((o) => ({
+                  value: o.id,
+                  label: o.nomi,
+                }))}
+              />
+            </Form.Item>
+          )}
 
-          <Form.Item
-            name="ishtirokchi_idlar"
-            label="Ishtirokchilar (ixtiyoriy)"
-          >
+          <Form.Item name="ishtirokchi_idlar" label="Ishtirokchilar">
             <Select
-              mode="tags"
-              placeholder="Foydalanuvchi ID larini kiriting"
-              tokenSeparators={[","]}
-              open={false}
-              suffixIcon={null}
+              mode="multiple"
+              placeholder="Foydalanuvchilarni tanlang"
+              loading={usersLoading}
+              showSearch
+              optionFilterProp="label"
+              options={users.map((u) => ({
+                value: u.id,
+                label: u.fio,
+              }))}
+              allowClear
             />
           </Form.Item>
 
           <div className="flex justify-end gap-2 mt-2">
-            <Button
-              onClick={() => {
-                setCreateModal(false);
-                createForm.resetFields();
-              }}
-            >
-              Bekor qilish
-            </Button>
+            <Button onClick={handleModalClose}>Bekor qilish</Button>
             <Button type="primary" htmlType="submit" loading={createLoading}>
               Yaratish
             </Button>

@@ -4,7 +4,7 @@ import { useAuth } from "./useAuth";
 
 export function usePermissions() {
   const { user } = useAuth();
-  const role = user?.role ?? "viewer";
+  const role = user?.lavozim ?? "viewer";
   const perms = PERMISSIONS[role] ?? PERMISSIONS.viewer;
 
   return {

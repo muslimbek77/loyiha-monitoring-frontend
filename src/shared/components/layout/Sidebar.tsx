@@ -12,21 +12,49 @@ import {
   Banknote,
 } from "lucide-react";
 import { usePermissions } from "@/features/auth/hooks/usePermissions";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
-type Permission = "canManageUsers" | "canCreate" | "canUpdate" | "canDelete" | "canRead" | "canManageUsers";
+type Permission =
+  | "canManageUsers"
+  | "canCreate"
+  | "canUpdate"
+  | "canDelete"
+  | "canRead"
+  | "canSeeUsers"
+  | "canManageUsers";
 
-const navItems: { label: string; path: string; icon: any; permission?: Permission }[] = [
-  { label: "Bosh sahifa",  path: "/",             icon: LayoutDashboard },
-  { label: "Boshqarma",   path: "/boshqarma",     icon: Landmark },
-  { label: "Obyektlar",   path: "/obyekt",         icon: Building2 },
-  { label: "Hujjatlar",   path: "/hujjatlar",      icon: FileText },
-  { label: "Bayonnomalar",path: "/bayonnomalar",   icon: ClipboardList },
-  { label: "Topshiriqlar",path: "/topshiriqlar",   icon: CheckSquare },
-  { label: "Jarimalar",   path: "/jarimalar",      icon: Banknote },
-  { label: "Chat xonalar",path: "/chats",           icon: MessageSquare },
-  { label: "Talablar",    path: "/talablar",        icon: Pin },
-  { label: "Xodimlar",    path: "/users",           icon: Users,        permission: "canManageUsers" },
-  { label: "Kategoriyalar",path: "/kategoriyalar", icon: ClipboardList, permission: "canManageUsers" },
+const navItems: {
+  label: string;
+  path: string;
+  icon: any;
+  permission?: Permission;
+}[] = [
+  {
+    label: "Bosh sahifa",
+    path: "/",
+    icon: LayoutDashboard,
+    permission: "canManageUsers",
+  },
+  { label: "Boshqarma", path: "/boshqarma", icon: Landmark },
+  { label: "Obyektlar", path: "/obyekt", icon: Building2 },
+  { label: "Hujjatlar", path: "/hujjatlar", icon: FileText },
+  { label: "Bayonnomalar", path: "/bayonnomalar", icon: ClipboardList },
+  { label: "Topshiriqlar", path: "/topshiriqlar", icon: CheckSquare },
+  { label: "Jarimalar", path: "/jarimalar", icon: Banknote },
+  { label: "Chat xonalar", path: "/chats", icon: MessageSquare },
+  { label: "Talablar", path: "/talablar", icon: Pin },
+  {
+    label: "Xodimlar",
+    path: "/users",
+    icon: Users,
+    permission: "canManageUsers",
+  },
+  {
+    label: "Kategoriyalar",
+    path: "/kategoriyalar",
+    icon: ClipboardList,
+    // permission: "canManageUsers",
+  },
 ];
 
 const Sidebar = () => {
@@ -34,7 +62,7 @@ const Sidebar = () => {
   const { can } = usePermissions();
 
   const visibleItems = navItems.filter(
-    (item) => !item.permission || can(item.permission)
+    (item) => !item.permission || can(item.permission),
   );
 
   return (

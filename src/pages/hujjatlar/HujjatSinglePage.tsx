@@ -263,7 +263,6 @@ const HujjatSinglePage = () => {
     );
   }
 
-
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
       {/* Back + breadcrumb */}
@@ -350,15 +349,27 @@ const HujjatSinglePage = () => {
             </div>
           </div>
           {data.fayl && (
-            <a
-              href={data.fayl?.replace("http://", "https://")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-medium rounded-lg shadow-sm transition-all"
+            <button
+              onClick={async () => {
+                try {
+                  const url = data.fayl!.replace("http://", "https://");
+                  const res = await fetch(url);
+                  const blob = await res.blob();
+                  const blobUrl = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = blobUrl;
+                  a.download = `${data.nomi}.${data.fayl_turi?.toLowerCase() || "file"}`;
+                  a.click();
+                  URL.revokeObjectURL(blobUrl);
+                } catch {
+                  message.error("Yuklab olishda xatolik yuz berdi");
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-medium rounded-lg shadow-sm transition-all cursor-pointer"
             >
               <DownloadOutlined className="text-[11px]" />
               Yuklab olish
-            </a>
+            </button>
           )}
         </div>
 
@@ -596,29 +607,49 @@ const HujjatSinglePage = () => {
           </Form.Item>
         </Form>
       </Modal>
-      {previewOpen ? (
-        <div className="absolute w-125 h-80 bg-black/50 top-50 right-110 flex items-center justify-center z-50 rounded-xl">
-          <div>
-            <div className="flex justify-end items-end">
+      {previewOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+          onClick={() => setPreviewOpen(false)}
+        >
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl overflow-hidden max-w-2xl w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <FileTextOutlined className="text-slate-400 text-sm" />
+                <span className="text-sm font-medium text-slate-700">
+                  {data.fayl_turi || "Fayl"}
+                </span>
+                <span className="text-xs text-slate-400">
+                  ({data.fayl_hajmi} KB)
+                </span>
+              </div>
               <button
                 onClick={() => setPreviewOpen(false)}
-                className="text-white cursor-pointer p-2 rounded-lg border mr-1 my-1"
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all cursor-pointer text-sm font-medium"
               >
-                X
+                ✕
               </button>
             </div>
-            {data?.fayl ? (
-              <img
-                className="w-full h-full"
-                src={data.fayl?.replace("http://", "https://")}
-                alt=""
-              />
-            ) : (
-              <p className="text-white text-sm">Fayl mavjud emas</p>
-            )}
+
+            {/* Image */}
+            <div className="bg-slate-50 flex items-center justify-center p-4 min-h-60 max-h-[70vh] overflow-auto">
+              {data?.fayl ? (
+                <img
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                  src={data.fayl?.replace("http://", "https://")}
+                  alt={data.nomi}
+                />
+              ) : (
+                <p className="text-slate-400 text-sm">Fayl mavjud emas</p>
+              )}
+            </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 };

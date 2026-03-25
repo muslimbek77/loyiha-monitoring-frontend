@@ -170,9 +170,12 @@ const TopshiriqlarPage = () => {
       render: (val, row) => {
         const cfg = statusConfig[val] || statusConfig.jarayonda;
         const styleMap = {
-          kechikkan: "bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border-rose-200",
-          jarayonda: "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200",
-          bajarildi: "bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200",
+          kechikkan:
+            "bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border-rose-200",
+          jarayonda:
+            "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200",
+          bajarildi:
+            "bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200",
         };
         return (
           <span
@@ -248,10 +251,14 @@ const TopshiriqlarPage = () => {
               <div
                 className={`absolute -top-3.5 -right-3.5 w-14 h-14 rounded-full ${s.dotClass} opacity-15`}
               />
-              <p className={`m-0 mb-1 text-[11px] font-bold uppercase tracking-widest ${s.accentClass}`}>
+              <p
+                className={`m-0 mb-1 text-[11px] font-bold uppercase tracking-widest ${s.accentClass}`}
+              >
                 {s.label}
               </p>
-              <p className={`m-0 text-[32px] font-extrabold leading-tight tracking-tighter ${s.colorClass}`}>
+              <p
+                className={`m-0 text-[32px] font-extrabold leading-tight tracking-tighter ${s.colorClass}`}
+              >
                 {s.value}
               </p>
             </div>
@@ -344,7 +351,8 @@ const TopshiriqlarPage = () => {
                 showTotal: (total, range) => (
                   <span className="text-slate-400 text-xs font-medium">
                     {range[0]}–{range[1]} /{" "}
-                    <strong className="text-slate-600">{total}</strong> ta topshiriq
+                    <strong className="text-slate-600">{total}</strong> ta
+                    topshiriq
                   </span>
                 ),
                 showSizeChanger: false,

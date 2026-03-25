@@ -267,10 +267,6 @@ const TopshiriqDetailPage = () => {
                 <span className="text-white/70 text-xs font-semibold uppercase tracking-widest">
                   Topshiriq
                 </span>
-                <span className="text-white/50">·</span>
-                <span className="font-mono text-white/90 text-xs bg-white/20 px-2 py-0.5 rounded">
-                  #{data.id}
-                </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white leading-snug max-w-xl">
                 {data.mazmun}
@@ -466,7 +462,7 @@ const TopshiriqDetailPage = () => {
           </div>
 
           {/* Right sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-5!">
             <Card
               className="rounded-2xl border border-slate-200 shadow-sm"
               bodyStyle={{ padding: "20px" }}
@@ -477,7 +473,7 @@ const TopshiriqDetailPage = () => {
               <Tag
                 icon={cfg.icon}
                 color={cfg.antColor}
-                className="text-sm font-semibold px-3 py-1.5 rounded-lg w-full flex items-center justify-center gap-2"
+                className="text-sm font-semibold px-3 py-1! rounded-lg w-full flex items-center justify-center gap-2"
               >
                 {data.holat_display}
               </Tag>

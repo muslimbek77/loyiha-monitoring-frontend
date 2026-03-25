@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   Tag,
@@ -9,6 +9,9 @@ import {
   Timeline,
   Button,
   Tooltip,
+  Input,
+  Upload,
+  message,
 } from "antd";
 import {
   UserOutlined,
@@ -24,12 +27,17 @@ import {
   PaperClipOutlined,
   TagOutlined,
   SendOutlined,
+  PlusOutlined,
+  LoadingOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { formatDate } from "@/shared/components/const/CustomUI";
 import api from "@/services/api/axios";
+import type { UploadFile } from "antd/es/upload/interface";
 
 const { Text, Title, Paragraph } = Typography;
+const { TextArea } = Input;
 
 interface Izoh {
   id: number;
@@ -125,8 +133,8 @@ const fmtTime = (d: string) =>
 
 const initials = (fio: string) =>
   fio
-    .split(" ")
-    .slice(0, 2)
+    ?.split(" ")
+    ?.slice(0, 2)
     .map((w) => w[0])
     .join("")
     .toUpperCase();
@@ -169,24 +177,81 @@ const InfoRow = ({
 const TalablarSinglePage = () => {
   const [data, setData] = useState<TalabDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Izoh form state
+  const [izohMatn, setIzohMatn] = useState("");
+  const [izohFayl, setIzohFayl] = useState<File | null>(null);
+  const [izohFaylName, setIzohFaylName] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const navigate = useNavigate();
   const { id } = useParams();
 
-  useEffect(() => {
-    const fetchTalab = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get(`talablar/${id}/`);
-        setData(res.data);
-      } catch (error) {
-        console.error("Failed to fetch talab details:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchTalab = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get(`talablar/${id}/`);
+      setData(res.data);
+    } catch (error) {
+      console.error("Failed to fetch talab details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchTalab();
   }, [id]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIzohFayl(file);
+      setIzohFaylName(file.name);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setIzohFayl(null);
+    setIzohFaylName("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleIzohSubmit = async () => {
+    if (!izohMatn.trim()) {
+      message.warning("Izoh matni kiritilishi shart");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const formData = new FormData();
+      formData.append("matn", izohMatn.trim());
+      if (izohFayl) {
+        formData.append("fayl", izohFayl);
+      }
+
+      await api.post(`talablar/${id}/izoh_qoshish/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      message.success("Izoh muvaffaqiyatli qo'shildi");
+      setIzohMatn("");
+      setIzohFayl(null);
+      setIzohFaylName("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      // Refresh data to show new comment
+      await fetchTalab();
+    } catch (error) {
+      console.error("Failed to add izoh:", error);
+      message.error("Izoh qo'shishda xatolik yuz berdi");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -212,10 +277,7 @@ const TalablarSinglePage = () => {
         >
           Orqaga
         </Button>
-        <div className="h-4 w-px bg-slate-200" />
-        <span className="text-xs text-slate-400 font-mono">
-          Talab #{data.id}
-        </span>
+
         <div className="ml-auto flex items-center gap-2">
           <Tag
             icon={cfg.icon}
@@ -255,8 +317,8 @@ const TalablarSinglePage = () => {
         bodyStyle={{ padding: 0 }}
       >
         <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
-        <div className="p-6">
-          <div className="flex items-start gap-4">
+        <div className="">
+          <div className="flex items-center gap-4">
             <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-100 flex items-center justify-center flex-shrink-0">
               <FileTextOutlined className="text-blue-500 text-lg" />
             </div>
@@ -417,16 +479,90 @@ const TalablarSinglePage = () => {
                       </div>
                       <p className="text-sm text-slate-600 m-0">{izoh.matn}</p>
                       {izoh.fayl && (
-                        <div className="mt-2 flex items-center gap-1.5 text-xs text-blue-500 cursor-pointer">
+                        <a
+                          href={izoh.fayl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 flex items-center gap-1.5 text-xs text-blue-500 cursor-pointer"
+                        >
                           <PaperClipOutlined />
                           <span>Fayl</span>
-                        </div>
+                        </a>
                       )}
                     </div>
                   ),
                 }))}
               />
             )}
+
+            {/* ── Add Izoh Form ── */}
+            <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-white">
+              <div className="px-4 pt-4 pb-2">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Izoh qo'shish
+                </div>
+                <TextArea
+                  value={izohMatn}
+                  onChange={(e) => setIzohMatn(e.target.value)}
+                  placeholder="Izoh matnini kiriting..."
+                  autoSize={{ minRows: 3, maxRows: 6 }}
+                  className="rounded-lg! border-slate-200! text-sm resize-none"
+                  disabled={submitting}
+                />
+              </div>
+
+              <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t border-slate-100 gap-3">
+                {/* File attachment */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={submitting}
+                  />
+                  {izohFaylName ? (
+                    <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 text-blue-600 rounded-lg px-2.5 py-1 text-xs font-medium max-w-[200px]">
+                      <PaperClipOutlined className="flex-shrink-0" />
+                      <span className="truncate">{izohFaylName}</span>
+                      <button
+                        onClick={handleRemoveFile}
+                        disabled={submitting}
+                        className="flex-shrink-0 text-blue-400 hover:text-red-500 transition-colors ml-0.5"
+                      >
+                        <DeleteOutlined />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={submitting}
+                      className="flex items-center gap-1.5 text-slate-400 hover:text-blue-500 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <PaperClipOutlined />
+                      <span>Fayl biriktirish</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Submit */}
+                <Button
+                  type="primary"
+                  icon={submitting ? <LoadingOutlined /> : <SendOutlined />}
+                  onClick={handleIzohSubmit}
+                  loading={submitting}
+                  disabled={!izohMatn.trim()}
+                  size="small"
+                  className="rounded-lg! font-medium! flex-shrink-0"
+                  style={{
+                    background: izohMatn.trim() ? "#3b82f6" : undefined,
+                    borderColor: izohMatn.trim() ? "#3b82f6" : undefined,
+                  }}
+                >
+                  Yuborish
+                </Button>
+              </div>
+            </div>
           </Card>
         </div>
 

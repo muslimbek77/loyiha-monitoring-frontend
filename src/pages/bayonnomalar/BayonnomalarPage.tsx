@@ -18,6 +18,8 @@ import {
   message,
   Upload,
   Select,
+  Card,
+  Empty,
 } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import type { SorterResult } from "antd/es/table/interface";
@@ -36,6 +38,9 @@ import {
   UploadOutlined,
   UserOutlined,
   SearchOutlined,
+  ExclamationCircleOutlined,
+  BellOutlined,
+  BuildOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
@@ -81,6 +86,23 @@ interface UsersApiResponse {
   results: User[];
 }
 
+// ─── NEW: Mening Topshiriq type ───────────────────────────────────────────────
+interface MeningTopshiriq {
+  id: number;
+  bayonnoma_raqami: string;
+  ijrochi_boshqarma: number;
+  ijrochi_boshqarma_nomi: string;
+  ijrochi_boshqarma_qisqa_nomi: string;
+  band_raqami: number;
+  mazmun: string;
+  muddat: string;
+  holat: string;
+  holat_display: string;
+  bajarildi: boolean;
+  is_kechikkan: boolean;
+  qolgan_kunlar: number;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getProgressStatus(
@@ -97,6 +119,22 @@ function getProgressColor(val: number): string {
   if (val >= 60) return "#1677ff";
   if (val >= 30) return "#faad14";
   return "#ff4d4f";
+}
+
+// ─── NEW: Holat color helper ───────────────────────────────────────────────────
+function getHolatColor(holat: string): string {
+  switch (holat) {
+    case "yangi":
+      return "blue";
+    case "jarayonda":
+      return "processing";
+    case "bajarildi":
+      return "success";
+    case "rad_etildi":
+      return "error";
+    default:
+      return "default";
+  }
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -308,6 +346,166 @@ const BaseFormFields = ({
   </>
 );
 
+// ─── NEW: Mening Topshiriqlar Card ─────────────────────────────────────────────
+
+const MeningTopshiriqlarSection = ({
+  topshiriqlar,
+  loading,
+}: {
+  topshiriqlar: MeningTopshiriq[];
+  loading: boolean;
+}) => {
+  const navigate = useNavigate();
+
+  if (!loading && topshiriqlar.length === 0) return null;
+
+  const kechikkan = topshiriqlar.filter((t) => t.is_kechikkan).length;
+  const yangi = topshiriqlar.filter((t) => t.holat === "yangi").length;
+
+  return (
+    <div className="mb-8">
+      {/* Section header */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BellOutlined className="text-lg text-amber-500" />
+          <span className="text-sm font-bold text-slate-700">
+            Mening topshiriqlarim
+          </span>
+          {topshiriqlar.length > 0 && (
+            <Badge
+              count={topshiriqlar.length}
+              style={{
+                backgroundColor: "#6366f1",
+                fontSize: 11,
+                fontWeight: 700,
+              }}
+            />
+          )}
+          {kechikkan > 0 && (
+            <Tag
+              color="error"
+              icon={<ExclamationCircleOutlined />}
+              className="rounded-full! text-xs! font-semibold!"
+            >
+              {kechikkan} ta kechikkan
+            </Tag>
+          )}
+        </div>
+        <span className="text-xs text-slate-400">
+          Sizga tayinlangan barcha topshiriqlar
+        </span>
+      </div>
+
+      <Spin spinning={loading} tip="Yuklanmoqda...">
+        {topshiriqlar.length === 0 && !loading ? null : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {topshiriqlar.map((t) => (
+              <div
+                key={t.id}
+                onClick={() => navigate(`/bayonnomalar/${t.id}`)}
+                className={`
+                  group relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm
+                  cursor-pointer transition-all duration-200
+                  hover:shadow-md hover:-translate-y-0.5
+                  ${
+                    t.is_kechikkan
+                      ? "border-red-200 bg-red-50/30"
+                      : t.bajarildi
+                        ? "border-green-200 bg-green-50/20"
+                        : "border-slate-100"
+                  }
+                `}
+              >
+                {/* Colored left accent bar */}
+                <div
+                  className={`absolute left-0 top-0 h-full w-1 rounded-l-2xl ${
+                    t.is_kechikkan
+                      ? "bg-red-400"
+                      : t.bajarildi
+                        ? "bg-green-400"
+                        : t.holat === "yangi"
+                          ? "bg-indigo-400"
+                          : "bg-blue-400"
+                  }`}
+                />
+
+                {/* Top row: band raqami + holat */}
+                <div className="mb-3 flex items-start justify-between gap-2 pl-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Tag
+                      color="blue"
+                      className="rounded-full! font-mono! text-xs! font-bold! shrink-0"
+                    >
+                      #{t.bayonnoma_raqami}
+                    </Tag>
+                    <span className="text-xs text-slate-400 font-mono truncate">
+                      Band #{t.band_raqami}
+                    </span>
+                  </div>
+                  <Tag
+                    color={getHolatColor(t.holat)}
+                    className="rounded-full! text-xs! font-semibold! shrink-0"
+                  >
+                    {t.holat_display}
+                  </Tag>
+                </div>
+
+                {/* Mazmun */}
+                <p className="mb-3 pl-2 text-sm font-medium text-slate-800 leading-snug line-clamp-2">
+                  {t.mazmun}
+                </p>
+
+                {/* Footer: boshqarma + muddat */}
+                <div className="pl-2 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <BuildOutlined className="text-slate-400 text-xs shrink-0" />
+                    <span
+                      className="text-xs text-slate-500 font-medium"
+                      title={t.ijrochi_boshqarma_nomi}
+                    >
+                      {t.ijrochi_boshqarma_qisqa_nomi}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <CalendarOutlined
+                      className={`text-xs shrink-0 ${t.is_kechikkan ? "text-red-400" : "text-slate-400"}`}
+                    />
+                    <span
+                      className={`text-xs font-semibold ${t.is_kechikkan ? "text-red-500" : "text-slate-500"}`}
+                    >
+                      {formatDate(t.muddat)}
+                    </span>
+                    {t.is_kechikkan ? (
+                      <Tag
+                        color="error"
+                        className="rounded-full! text-[10px]! font-bold! px-1.5! py-0! leading-4!"
+                      >
+                        Kechikkan
+                      </Tag>
+                    ) : t.bajarildi ? (
+                      <Tag
+                        color="success"
+                        className="rounded-full! text-[10px]! font-bold! px-1.5! py-0! leading-4!"
+                      >
+                        Bajarildi
+                      </Tag>
+                    ) : (
+                      <span className="text-xs text-slate-400">
+                        {t.qolgan_kunlar} kun qoldi
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Spin>
+    </div>
+  );
+};
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10;
@@ -327,6 +525,13 @@ const BayonnomalarPage = () => {
   // Users state
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+
+  // ── NEW: Mening topshiriqlar state ────────────────────────────────────────
+  const [meningTopshiriqlar, setMeningTopshiriqlar] = useState<
+    MeningTopshiriq[]
+  >([]);
+  const [meningTopshiriqlarLoading, setMeningTopshiriqlarLoading] =
+    useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -364,6 +569,21 @@ const BayonnomalarPage = () => {
     [messageApi],
   );
 
+  // ── NEW: GET Mening Topshiriqlar ──────────────────────────────────────────
+  const getMeningTopshiriqlar = useCallback(async () => {
+    setMeningTopshiriqlarLoading(true);
+    try {
+      const res = await api.get<MeningTopshiriq[]>(
+        "/bayonnomalar/topshiriqlar/mening/",
+      );
+      setMeningTopshiriqlar(res.data);
+    } catch {
+      // silent
+    } finally {
+      setMeningTopshiriqlarLoading(false);
+    }
+  }, []);
+
   // ── GET All Users ──────────────────────────────────────────────────────────
   const getAllUsers = async () => {
     setUsersLoading(true);
@@ -383,6 +603,7 @@ const BayonnomalarPage = () => {
 
   useEffect(() => {
     getAllUsers();
+    getMeningTopshiriqlar(); // ← NEW
   }, []);
 
   // ── Handle table change (pagination + sort) ───────────────────────────────
@@ -394,7 +615,6 @@ const BayonnomalarPage = () => {
     const newPage = pagination.current ?? 1;
     setCurrentPage(newPage);
 
-    // Build ordering string from sorter
     const s = Array.isArray(sorter) ? sorter[0] : sorter;
     if (s?.columnKey && s?.order) {
       const prefix = s.order === "descend" ? "-" : "";
@@ -404,7 +624,7 @@ const BayonnomalarPage = () => {
     }
   };
 
-  // ── Search: trigger on Enter or button click ──────────────────────────────
+  // ── Search ────────────────────────────────────────────────────────────────
   const handleSearch = () => {
     setCurrentPage(1);
     setSearchValue(searchInput);
@@ -455,7 +675,6 @@ const BayonnomalarPage = () => {
       getBayonnomalar(currentPage, searchValue, ordering);
     } catch (err: unknown) {
       if (err && typeof err === "object" && "errorFields" in err) return;
-      // messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
     } finally {
       setSubmitting(false);
     }
@@ -511,7 +730,6 @@ const BayonnomalarPage = () => {
       getBayonnomalar(currentPage, searchValue, ordering);
     } catch (err: unknown) {
       if (err && typeof err === "object" && "errorFields" in err) return;
-      // messageApi.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
     } finally {
       setSubmitting(false);
     }
@@ -522,7 +740,6 @@ const BayonnomalarPage = () => {
     try {
       await api.delete(`${API_ENDPOINTS.BAYONNOMALAR.LIST}${id}/`);
       messageApi.success("Bayonnoma o'chirildi.");
-      // If last item on page > 1, go back a page
       const newPage =
         data.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
       setCurrentPage(newPage);
@@ -541,6 +758,7 @@ const BayonnomalarPage = () => {
       : 0;
   const completed = data.filter((d) => d.bajarilish_foizi === 100).length;
   const totalTasks = data.reduce((s, d) => s + d.topshiriqlar_soni, 0);
+
   // ── Table columns ──────────────────────────────────────────────────────────
   const columns: ColumnsType<Bayonnoma> = [
     {
@@ -594,6 +812,7 @@ const BayonnomalarPage = () => {
       title: <FieldLabel>Yaratuvchi</FieldLabel>,
       dataIndex: "yaratuvchi_fio",
       key: "yaratuvchi_fio",
+      width: 220,
       sorter: true,
       render: (val: string) => {
         const initials = val
@@ -682,15 +901,6 @@ const BayonnomalarPage = () => {
           className="flex items-center justify-center gap-2"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* <Tooltip title="Tahrirlash">
-            <Button
-              size="small"
-              type="text"
-              icon={<EditOutlined className="text-amber-500" />}
-              onClick={() => openEdit(record)}
-              className="rounded-lg!"
-            />
-          </Tooltip> */}
           <Tooltip title="O'chirish">
             <Popconfirm
               title="Bayonnomani o'chirish"
@@ -784,6 +994,12 @@ const BayonnomalarPage = () => {
             color="#3b82f6"
           />
         </div>
+
+        {/* ── NEW: Mening Topshiriqlar ── */}
+        <MeningTopshiriqlarSection
+          topshiriqlar={meningTopshiriqlar}
+          loading={meningTopshiriqlarLoading}
+        />
 
         {/* ── Table ── */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-100">
