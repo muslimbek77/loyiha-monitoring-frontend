@@ -80,7 +80,7 @@ const response = await api.get(API_ENDPOINTS.TALABLAR.LIST);
 - `Obyektlar`
   Qurilish obyektlari, progress, muddat va muammo holati.
 - `Hujjatlar`
-  Hujjat yuklash, kategoriya asosida filtrlash, tasdiqlash va versiyalar tarixi.
+  Hujjat yuklash, ko'rinish auditoriyasini tanlash, kategoriya asosida filtrlash, tasdiqlash va versiyalar tarixi.
 - `Bayonnomalar`
   Yig'ilish bayonnomalari, topshiriqlar va ijro nazorati.
 - `Topshiriqlar`
@@ -93,7 +93,7 @@ const response = await api.get(API_ENDPOINTS.TALABLAR.LIST);
 ### 4. Hujjat bilan ishlash
 
 1. `Hujjatlar` bo'limida filterlardan foydalaning.
-2. `Yangi Hujjat` orqali obyekt, boshqarma va kategoriya tanlang.
+2. `Yangi Hujjat` orqali obyekt, boshqarma, kategoriya va kimga ko'rinishini tanlang.
 3. Detail sahifada:
    - faylni yuklab olish
    - holatini ko'rish
@@ -104,37 +104,42 @@ const response = await api.get(API_ENDPOINTS.TALABLAR.LIST);
 
 1. `Bayonnomalar` sahifasida qidiruv va tartiblashdan foydalaning.
 2. Bayonnoma detail ichida topshiriqlar va izohlar ko'rinadi.
-3. `Topshiriqlar` bo'limida kechikkan va bajarilgan vazifalar alohida ajraladi.
+3. `Boshqarma boshlig'i` va `boshqarma_boshligi_orinbosari` o'z boshqarmasi xodimlariga topshiriq qo'sha oladi.
+4. `Muhandis` faqat o'ziga yoki o'z boshqarmasiga berilgan topshiriqlarga javob beradi.
+5. `Topshiriqlar` bo'limida kechikkan va bajarilgan vazifalar alohida ajraladi.
 
 ### 6. Talablar bilan ishlash
 
 1. `Talablar` sahifasida kelgan va yuborilgan talablar ajratilgan.
-2. Ruxsat bo'lsa:
+2. `Muhandis` talab yaratmaydi va talabga javob bermaydi.
+3. Boshqarma rahbariyati va yetakchi muhandis uchun ruxsat bo'lsa:
    - qabul qilish
    - rad etish
    - bajarildi deb belgilash
-3. Har bir action to'g'ridan-to'g'ri backend action endpointiga ulanadi.
+4. Har bir action to'g'ridan-to'g'ri backend action endpointiga ulanadi.
 
 ## Admin va rahbar use-case'lari
 
-### Rais / rahbar
+### Rahbariyat
 
 - dashboardda umumiy KPI va AI xulosani ko'radi
 - boshqarma reytinglarini tahlil qiladi
 - hujjatlar, talablar va topshiriqlardagi muammoli nuqtalarni kuzatadi
 - AI hisobotni yaratish yoki yangilash imkoniga ega bo'lishi mumkin
 
-### Boshqarma boshlig'i
+### Boshqarma boshlig'i / boshqarma boshlig'i o'rinbosari
 
 - o'z boshqarmasiga tegishli hujjatlar va topshiriqlarni nazorat qiladi
 - hujjatlarni tasdiqlaydi yoki rad etadi
-- talab va topshiriqlar ijrosini tekshiradi
+- o'z boshqarmasi xodimlariga topshiriq yaratadi
+- talab yaratadi, qabul qiladi va javob beradi
 
-### Operator / ijrochi
+### Yetakchi muhandis / muhandis
 
 - topshiriqlarni ko'radi
 - izoh va biriktirma yuklaydi
-- talab/hujjat detail sahifalarida holatni kuzatadi
+- yetakchi muhandis talab bilan ishlaydi, muhandis esa talab yarata olmaydi va javob bermaydi
+- hujjat yuklash va chat barcha rollar uchun ochiq
 
 ### Admin / texnik foydalanuvchi
 

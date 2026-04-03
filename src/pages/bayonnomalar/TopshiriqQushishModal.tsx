@@ -1,5 +1,6 @@
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { useAuthStore } from "@/store/authStore";
 import { useEffect, useState } from "react";
 import {
   Modal,
@@ -117,6 +118,7 @@ const TopshiriqQoshishModal = ({
   onSuccess,
 }: TopshiriqQoshishModalProps) => {
   const [form] = Form.useForm();
+  const currentUser = useAuthStore((state) => state.user);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(0); // 0 = asosiy, 1 = ijrochi, 2 = qo'shimcha
 
@@ -129,27 +131,48 @@ const TopshiriqQoshishModal = ({
   >([]);
   const [boshqarmaLoading, setBoshqarmaLoading] = useState(false);
   const [xodimLoading, setXodimLoading] = useState(false);
+  const isBoshqarmaRahbar =
+    currentUser?.lavozim === "boshqarma_boshi" ||
+    currentUser?.lavozim === "boshqarma_boshligi";
+  const ownBoshqarmaId = currentUser?.boshqarma
+    ? Number(currentUser.boshqarma)
+    : null;
 
   // Add this useEffect inside the component:
   useEffect(() => {
     if (open) {
+      if (isBoshqarmaRahbar && ownBoshqarmaId) {
+        form.setFieldValue("ijrochi_boshqarma", ownBoshqarmaId);
+      }
+
       // Fetch boshqarmalar
       setBoshqarmaLoading(true);
       api
         .get(API_ENDPOINTS.BOSHQARMA.LIST)
-        .then((res) => setBoshqarmalar(res.data?.results ?? res.data))
+        .then((res) => {
+          const items = res.data?.results ?? res.data ?? [];
+          setBoshqarmalar(
+            isBoshqarmaRahbar && ownBoshqarmaId
+              ? items.filter((item: { id: number }) => item.id === ownBoshqarmaId)
+              : items,
+          );
+        })
         .catch(() => message.error("Boshqarmalar yuklanmadi"))
         .finally(() => setBoshqarmaLoading(false));
 
       // Fetch xodimlar
       setXodimLoading(true);
       api
-        .get(API_ENDPOINTS.USERS.LIST_ALL)
+        .get(
+          isBoshqarmaRahbar
+            ? API_ENDPOINTS.USERS.BOSHQARMA_XODIMLARI
+            : API_ENDPOINTS.USERS.LIST_ALL,
+        )
         .then((res) => setXodimlar(res.data?.results ?? res.data))
         .catch(() => message.error("Xodimlar yuklanmadi"))
         .finally(() => setXodimLoading(false));
     }
-  }, [open]);
+  }, [form, isBoshqarmaRahbar, open, ownBoshqarmaId]);
 
   const handleCancel = () => {
     form.resetFields();
@@ -384,6 +407,7 @@ const TopshiriqQoshishModal = ({
               <Select
                 showSearch
                 allowClear
+                disabled={isBoshqarmaRahbar && !!ownBoshqarmaId}
                 loading={boshqarmaLoading}
                 placeholder="Boshqarmani tanlang..."
                 filterOption={(input, option) =>

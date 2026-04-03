@@ -23,7 +23,7 @@ Dashboardda quyidagilar ko'rinadi:
 
 - qidiruv va filter ishlating
 - boshqarma va kategoriya bo'yicha saralang
-- yangi hujjat yarating
+- yangi hujjat yarating va kimga ko'rinishini tanlang
 - detail sahifada faylni yuklab oling
 - versiyalar tarixini ko'ring
 
@@ -34,7 +34,7 @@ Dashboardda quyidagilar ko'rinadi:
 - raqam yoki mavzu bo'yicha qidiring
 - bayonnoma detail sahifasini oching
 - topshiriqlarni ko'ring
-- ruxsat bo'lsa yangi topshiriq qo'shing
+- boshqarma boshlig'i yoki boshqarma boshlig'i o'rinbosari bo'lsangiz, o'z boshqarmangiz xodimlariga topshiriq qo'shing
 
 ## 5. Topshiriqlar
 
@@ -49,10 +49,11 @@ Dashboardda quyidagilar ko'rinadi:
 `Talablar` bo'limida:
 
 - kelgan va yuborilgan talablarni alohida ko'ring
-- yangi talab yuboring
+- boshqarma rahbariyati yoki yetakchi muhandis bo'lsangiz, yangi talab yuboring
 - ruxsat bo'lsa qabul qiling
 - ruxsat bo'lsa rad eting
 - ruxsat bo'lsa bajarildi deb belgilang
+- muhandis roli talab yaratmaydi va talabga javob bermaydi
 
 ## 7. Obyektlar
 
