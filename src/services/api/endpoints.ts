@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
     LIST_ALL: "/core/boshqarmalar/?all=true",
     DETAIL: (id: string | number) => `/core/boshqarmalar/${id}/`,
     STATISTIKA: (id: string | number) => `/core/boshqarmalar/${id}/statistika/`,
+    OVERVIEW: (id: string | number) => `/core/boshqarmalar/${id}/overview/`,
   },
 
   HUJJATLAR: {

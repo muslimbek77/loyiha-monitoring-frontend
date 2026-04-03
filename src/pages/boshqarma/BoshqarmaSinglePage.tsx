@@ -1,21 +1,22 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Spin, Modal, Form, Input, message } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeftOutlined,
-  UserOutlined,
-  TeamOutlined,
-  FileOutlined,
-  FileDoneOutlined,
+  CheckCircleOutlined,
   ClockCircleOutlined,
-  EditOutlined,
   DeleteOutlined,
-  WarningOutlined,
+  EditOutlined,
+  FileOutlined,
   MinusCircleOutlined,
-  ExclamationCircleOutlined,
+  PlusOutlined,
+  SendOutlined,
+  TeamOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
+import { Button, Empty, Form, Input, Modal, Select, Spin, message } from "antd";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 interface UserType {
   id: number;
@@ -29,9 +30,15 @@ interface UserType {
 interface HujjatType {
   id: number;
   nomi: string;
+  obyekt: number | null;
   obyekt_nomi: string;
+  kategoriya: number | null;
   kategoriya_nomi: string;
+  kategoriya_full_path?: string;
+  boshqarma: number | null;
   boshqarma_nomi: string;
+  yuklovchi: number | null;
+  yuklovchi_fio: string;
   holat: string;
   holat_display: string;
   muddat: string;
@@ -40,10 +47,32 @@ interface HujjatType {
   yuklangan_vaqt: string;
 }
 
+interface ObyektType {
+  id: number;
+  nomi: string;
+  manzil: string;
+  holat: string;
+  bajarilish_foizi: number;
+  tugash_sanasi: string;
+  hujjatlar_soni: number;
+}
+
+interface KategoriyaType {
+  id: number;
+  nomi: string;
+  full_path: string;
+  parent: number | null;
+  obyekt: number | null;
+  obyekt_nomi: string;
+  hujjatlar_soni: number;
+  oxirgi_yuklangan_vaqt: string | null;
+}
+
 interface BoshqarmaType {
   id: number;
   nomi: string;
   qisqa_nomi: string;
+  reyting?: number;
 }
 
 interface StatistikaType {
@@ -52,6 +81,18 @@ interface StatistikaType {
   jarimalar_soni: number;
   jami_minus: number;
   bajarilmagan_topshiriqlar: number;
+  obyektlar_soni: number;
+  kategoriyalar_soni: number;
+  ochiq_talablar_soni: number;
+}
+
+interface OverviewResponse {
+  boshqarma: BoshqarmaType;
+  statistika: StatistikaType;
+  xodimlar: UserType[];
+  hujjatlar: HujjatType[];
+  kategoriyalar: KategoriyaType[];
+  obyektlar: ObyektType[];
 }
 
 interface BoshqarmaUpdatePayload {
@@ -59,30 +100,45 @@ interface BoshqarmaUpdatePayload {
   qisqa_nomi: string;
 }
 
-type TabKey = "xodimlar" | "hujjatlar";
+interface TalabCreatePayload {
+  ijrochi_boshqarma: number;
+  kategoriya?: number;
+  mavzu: string;
+  mazmun: string;
+  muddat: string;
+}
 
-const HOLAT_CONFIG: Record<
-  string,
-  { bg: string; text: string; dot: string; label: string }
-> = {
+type TabKey = "xodimlar" | "hujjatlar" | "obyektlar";
+
+const HOLAT_CONFIG: Record<string, { bg: string; text: string; dot: string }> = {
   tasdiqlandi: {
     bg: "bg-emerald-50",
     text: "text-emerald-600",
     dot: "bg-emerald-400",
-    label: "Tasdiqlandi",
   },
   kutilmoqda: {
     bg: "bg-amber-50",
     text: "text-amber-600",
     dot: "bg-amber-400",
-    label: "Kutilmoqda",
   },
   rad_etildi: {
     bg: "bg-red-50",
     text: "text-red-500",
     dot: "bg-red-400",
-    label: "Rad etildi",
   },
+  arxiv: {
+    bg: "bg-slate-100",
+    text: "text-slate-500",
+    dot: "bg-slate-400",
+  },
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  jarayonda: "bg-blue-50 text-blue-600",
+  muammoli: "bg-red-50 text-red-500",
+  tugatilgan: "bg-emerald-50 text-emerald-600",
+  rejada: "bg-amber-50 text-amber-600",
+  toxtatilgan: "bg-slate-100 text-slate-500",
 };
 
 const STAT_CARDS = [
@@ -103,12 +159,28 @@ const STAT_CARDS = [
     iconBg: "bg-violet-100",
   },
   {
+    key: "obyektlar_soni" as keyof StatistikaType,
+    label: "Obyektlar",
+    icon: <CheckCircleOutlined />,
+    bg: "bg-emerald-50",
+    text: "text-emerald-600",
+    iconBg: "bg-emerald-100",
+  },
+  {
     key: "jarimalar_soni" as keyof StatistikaType,
     label: "Jarimalar",
     icon: <WarningOutlined />,
     bg: "bg-amber-50",
     text: "text-amber-600",
     iconBg: "bg-amber-100",
+  },
+  {
+    key: "ochiq_talablar_soni" as keyof StatistikaType,
+    label: "Ochiq talablar",
+    icon: <SendOutlined />,
+    bg: "bg-cyan-50",
+    text: "text-cyan-600",
+    iconBg: "bg-cyan-100",
   },
   {
     key: "jami_minus" as keyof StatistikaType,
@@ -118,111 +190,101 @@ const STAT_CARDS = [
     text: "text-red-500",
     iconBg: "bg-red-100",
   },
-  {
-    key: "bajarilmagan_topshiriqlar" as keyof StatistikaType,
-    label: "Bajarilmagan topshiriqlar",
-    icon: <ExclamationCircleOutlined />,
-    bg: "bg-orange-50",
-    text: "text-orange-500",
-    iconBg: "bg-orange-100",
-  },
 ];
+
+const formatDate = (value?: string | null) =>
+  value
+    ? new Date(value).toLocaleDateString("uz-UZ", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "—";
+
+const formatDateTime = (value?: string | null) =>
+  value
+    ? new Date(value).toLocaleString("uz-UZ", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
+
+const EmptyState = ({ title }: { title: string }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white py-16">
+    <Empty description={title} />
+  </div>
+);
 
 const BoshqarmaSinglePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<TabKey>("xodimlar");
-  const [detail, setDetail] = useState<BoshqarmaType | null>(null);
+  const [overview, setOverview] = useState<OverviewResponse | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-
-  const [hujjatlar, setHujjatlar] = useState<HujjatType[]>([]);
-  const [hujjatlarLoading, setHujjatlarLoading] = useState(false);
-
-  const [statistika, setStatistika] = useState<StatistikaType | null>(null);
-  const [statistikaLoading, setStatistikaLoading] = useState(false);
-
-  // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
-  const [editFetchLoading, setEditFetchLoading] = useState(false);
-  const [form] = Form.useForm<BoshqarmaUpdatePayload>();
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [editForm] = Form.useForm<BoshqarmaUpdatePayload>();
 
-  const fetchBoshqarmaDetail = async () => {
+  const [talabModalOpen, setTalabModalOpen] = useState(false);
+  const [talabLoading, setTalabLoading] = useState(false);
+  const [talabForm] = Form.useForm<TalabCreatePayload>();
+
+  const fetchOverview = async () => {
     try {
-      setEditFetchLoading(true);
-      const res = await api.get<BoshqarmaType>(API_ENDPOINTS.BOSHQARMA.DETAIL(id!));
-      setDetail(res.data);
-      form.setFieldsValue({
-        nomi: res.data.nomi,
-        qisqa_nomi: res.data.qisqa_nomi,
+      setLoading(true);
+      const res = await api.get<OverviewResponse>(API_ENDPOINTS.BOSHQARMA.OVERVIEW(id!));
+      setOverview(res.data);
+      editForm.setFieldsValue({
+        nomi: res.data.boshqarma.nomi,
+        qisqa_nomi: res.data.boshqarma.qisqa_nomi,
       });
     } catch (error) {
-      console.error("Error fetching boshqarma detail:", error);
-      message.error("Ma'lumotlarni yuklashda xatolik yuz berdi");
+      console.error("Error fetching boshqarma overview:", error);
+      message.error("Boshqarma ma'lumotlarini yuklashda xatolik yuz berdi");
     } finally {
-      setEditFetchLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleEditOpen = () => {
-    setEditModalOpen(true);
-    fetchBoshqarmaDetail();
-  };
-
-  const fetchUsers = async () => {
-    try {
-      setUsersLoading(true);
-      const res = await api.get(API_ENDPOINTS.USERS.LIST, {
-        params: { boshqarma: id, all: true },
-      });
-      setUsers(res.data.results ?? res.data);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-    } finally {
-      setUsersLoading(false);
+  useEffect(() => {
+    if (id) {
+      fetchOverview();
     }
-  };
+  }, [id]);
 
-  const fetchHujjatlar = async () => {
-    try {
-      setHujjatlarLoading(true);
-      const res = await api.get(API_ENDPOINTS.HUJJATLAR.BOSHQARMA_HUJJATLARI, {
-        params: { boshqarma: id },
-      });
-      setHujjatlar(res.data.results ?? res.data);
-    } catch (error) {
-      console.error("Error fetching hujjatlar:", error);
-    } finally {
-      setHujjatlarLoading(false);
-    }
-  };
+  const availableKategoriyalar = useMemo(
+    () => overview?.kategoriyalar ?? [],
+    [overview],
+  );
 
-  const fetchStatistika = async () => {
-    try {
-      setStatistikaLoading(true);
-      const res = await api.get<StatistikaType>(
-        API_ENDPOINTS.BOSHQARMA.STATISTIKA(id!),
-      );
-      setStatistika(res.data);
-    } catch (error) {
-      console.error("Error fetching statistika:", error);
-    } finally {
-      setStatistikaLoading(false);
-    }
-  };
+  const populatedKategoriyalar = useMemo(
+    () => availableKategoriyalar.filter((item) => item.hujjatlar_soni > 0),
+    [availableKategoriyalar],
+  );
+
+  const boshqarmaSummary = overview?.statistika
+    ? [
+        `${overview.statistika.xodimlar_soni} ta faol xodim bor.`,
+        `${overview.statistika.hujjatlar_soni} ta hujjat va ${overview.statistika.kategoriyalar_soni} ta faol kategoriya shakllangan.`,
+        `${overview.statistika.obyektlar_soni} ta obyekt ushbu boshqarma hujjatlari bilan bog'langan.`,
+      ].join(" ")
+    : "";
 
   const handleEditSubmit = async () => {
     try {
-      const values = await form.validateFields();
+      const values = await editForm.validateFields();
       setEditLoading(true);
       await api.put(API_ENDPOINTS.BOSHQARMA.DETAIL(id!), values);
-      message.success("Boshqarma muvaffaqiyatli yangilandi");
+      message.success("Boshqarma yangilandi");
       setEditModalOpen(false);
-      form.resetFields();
-      fetchBoshqarmaDetail();
+      await fetchOverview();
     } catch (error) {
       console.error("Error updating boshqarma:", error);
       message.error("Yangilashda xatolik yuz berdi");
@@ -233,158 +295,176 @@ const BoshqarmaSinglePage = () => {
 
   const handleDelete = async () => {
     try {
+      setDeleteLoading(true);
       await api.delete(API_ENDPOINTS.BOSHQARMA.DETAIL(id!));
-      message.success("Boshqarma muvaffaqiyatli o'chirildi");
+      message.success("Boshqarma o'chirildi");
       navigate("/boshqarma");
     } catch (error) {
       console.error("Error deleting boshqarma:", error);
       message.error("O'chirishda xatolik yuz berdi");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
-  const handleEditCancel = () => {
-    setEditModalOpen(false);
-    form.resetFields();
+  const handleTalabCreate = async () => {
+    try {
+      const values = await talabForm.validateFields();
+      setTalabLoading(true);
+      await api.post(API_ENDPOINTS.TALABLAR.LIST, {
+        ...values,
+        ijrochi_boshqarma: Number(id),
+      });
+      message.success("Talab muvaffaqiyatli yaratildi");
+      setTalabModalOpen(false);
+      talabForm.resetFields();
+      await fetchOverview();
+    } catch (error) {
+      console.error("Error creating talab:", error);
+      message.error("Talab yaratishda xatolik yuz berdi");
+    } finally {
+      setTalabLoading(false);
+    }
   };
 
-  useEffect(() => {
-    if (id) {
-      fetchBoshqarmaDetail();
-      fetchUsers();
-      fetchHujjatlar();
-      fetchStatistika();
-    }
-  }, [id]);
-
-  const isLoading = activeTab === "xodimlar" ? usersLoading : hujjatlarLoading;
-
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("uz-UZ", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-
-  const getHolatConfig = (holat: string) =>
-    HOLAT_CONFIG[holat] ?? {
-      bg: "bg-slate-100",
-      text: "text-slate-500",
-      dot: "bg-slate-300",
-      label: holat,
-    };
-
-  const boshqarmaSummary = statistika
-    ? [
-        `${statistika.xodimlar_soni} ta faol xodim mavjud.`,
-        `${statistika.hujjatlar_soni} ta hujjat boshqarma bilan bog'langan.`,
-        statistika.bajarilmagan_topshiriqlar > 0
-          ? `${statistika.bajarilmagan_topshiriqlar} ta topshiriq bajarilmagan holatda.`
-          : "Bajarilmagan topshiriqlar yo'q.",
-      ].join(" ")
-    : "";
+  if (loading && !overview) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
-      {/* Back + header */}
-      <div className="mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors mb-3 cursor-pointer"
-        >
-          <ArrowLeftOutlined className="text-[10px]" />
-          Boshqarmalar
-        </button>
+    <div className="min-h-screen rounded-xl bg-gray-50 px-6 py-8">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-slate-600"
+          >
+            <ArrowLeftOutlined className="text-[10px]" />
+            Boshqarmalar
+          </button>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Boshqarma overview
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-800">
+            {overview?.boshqarma.nomi || "Boshqarma"}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {overview?.boshqarma.qisqa_nomi || "—"} • Hujjatlar, obyektlar va talablar boshqaruvi
+          </p>
+        </div>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Boshqarma detail
-            </p>
-            <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
-              {detail?.nomi || "Boshqarma"}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {detail?.qisqa_nomi || "—"} •{" "}
-              {activeTab === "xodimlar" ? "Xodimlar ro'yxati" : "Hujjatlar ro'yxati"}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Edit button */}
-            <button
-              onClick={handleEditOpen}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-full transition-colors cursor-pointer"
+        <div className="flex flex-wrap items-center gap-2">
+          {user?.boshqarma !== Number(id) ? (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              className="!rounded-full !border-0 !bg-blue-600"
+              onClick={() => setTalabModalOpen(true)}
             >
-              <EditOutlined className="text-[11px]" />
-              Tahrirlash
-            </button>
-            <button
-              onClick={handleDelete}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-full transition-colors cursor-pointer"
-            >
-              <DeleteOutlined className="text-[11px]" />
-              O'chirish
-            </button>
-          </div>
+              Talab yaratish
+            </Button>
+          ) : null}
+          <Button
+            icon={<EditOutlined />}
+            className="!rounded-full"
+            onClick={() => setEditModalOpen(true)}
+          >
+            Tahrirlash
+          </Button>
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            className="!rounded-full"
+            loading={deleteLoading}
+            onClick={handleDelete}
+          >
+            O'chirish
+          </Button>
         </div>
       </div>
 
-      {/* ── STATISTIKA CARDS ── */}
-      <div className="mb-6">
-        {statistikaLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Spin size="small" />
-          </div>
-        ) : statistika ? (
-          <div className="grid grid-cols-5 gap-3">
-            {STAT_CARDS.map((card) => (
-              <div
-                key={card.key}
-                className={`${card.bg} rounded-2xl px-4 py-4 flex items-center gap-3 border border-white shadow-sm`}
-              >
+      {overview?.statistika ? (
+        <div className="mb-6 grid gap-3 xl:grid-cols-6 md:grid-cols-3">
+          {STAT_CARDS.map((card) => (
+            <div
+              key={card.key}
+              className={`${card.bg} rounded-2xl border border-white px-4 py-4 shadow-sm`}
+            >
+              <div className="flex items-center gap-3">
                 <div
-                  className={`w-9 h-9 rounded-xl ${card.iconBg} flex items-center justify-center flex-shrink-0 ${card.text} text-base`}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.iconBg} ${card.text}`}
                 >
                   {card.icon}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium text-slate-400 leading-none mb-1 truncate">
-                    {card.label}
-                  </p>
-                  <p className={`text-xl font-bold leading-none ${card.text}`}>
-                    {statistika[card.key]}
+                <div>
+                  <p className="text-[11px] font-medium text-slate-400">{card.label}</p>
+                  <p className={`text-xl font-bold ${card.text}`}>
+                    {overview.statistika[card.key]}
                   </p>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
-      {boshqarmaSummary && (
-        <div className="mb-6 rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4">
+      <div className="mb-6 grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
             Operativ xulosa
           </p>
           <p className="mt-2 text-sm leading-7 text-slate-700">{boshqarmaSummary}</p>
         </div>
-      )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Kategoriya kesimi
+          </p>
+          <div className="mt-3 space-y-2">
+            {populatedKategoriyalar.slice(0, 4).map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-700">
+                    {item.full_path}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {item.obyekt_nomi || "Obyektsiz"} • {formatDateTime(item.oxirgi_yuklangan_vaqt)}
+                  </p>
+                </div>
+                <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-600">
+                  {item.hujjatlar_soni} ta
+                </span>
+              </div>
+            ))}
+            {populatedKategoriyalar.length === 0 ? (
+              <p className="text-sm text-slate-400">Hali kategoriyalar bo'yicha hujjatlar mavjud emas.</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-5 flex w-fit gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
         {(
           [
             { key: "xodimlar", label: "Xodimlar", icon: <TeamOutlined /> },
             { key: "hujjatlar", label: "Hujjatlar", icon: <FileOutlined /> },
+            { key: "obyektlar", label: "Obyektlar", icon: <CheckCircleOutlined /> },
           ] as { key: TabKey; label: string; icon: React.ReactNode }[]
         ).map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
               activeTab === tab.key
                 ? "bg-slate-800 text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
             }`}
           >
             {tab.icon}
@@ -393,278 +473,261 @@ const BoshqarmaSinglePage = () => {
         ))}
       </div>
 
-      {/* Content */}
-      {isLoading ? (
-        <div className="flex justify-center items-center py-32">
-          <Spin size="large" />
-        </div>
-      ) : activeTab === "xodimlar" ? (
-        /* ── USERS TABLE ── */
-        users.length === 0 ? (
-          <EmptyState
-            icon={<TeamOutlined />}
-            text="Bu boshqarmada xodimlar yo'q"
-          />
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      {activeTab === "xodimlar" ? (
+        overview?.xodimlar.length ? (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  {["#", "F.I.O", "Lavozim", "Boshqarma", "Holati"].map(
-                    (col) => (
-                      <th
-                        key={col}
-                        className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400"
-                      >
-                        {col}
-                      </th>
-                    ),
-                  )}
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  {["#", "F.I.O", "Lavozim", "Holati"].map((col) => (
+                    <th
+                      key={col}
+                      className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400"
+                    >
+                      {col}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {overview.xodimlar.map((xodim) => (
                   <tr
-                    key={user.id}
-                    onClick={() => navigate(`/users/${user.id}`)}
-                    className="border-b border-slate-100 last:border-b-0 cursor-pointer hover:bg-slate-50 transition-colors duration-100"
+                    key={xodim.id}
+                    className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50"
                   >
+                    <td className="px-4 py-3.5 text-xs font-medium text-slate-400">{xodim.id}</td>
+                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-700">{xodim.fio}</td>
+                    <td className="px-4 py-3.5 text-sm text-slate-600">{xodim.lavozim}</td>
                     <td className="px-4 py-3.5">
-                      <span className="text-xs font-medium text-slate-400 tabular-nums">
-                        {user.id}
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          xodim.is_active
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-slate-100 text-slate-400"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            xodim.is_active ? "bg-emerald-400" : "bg-slate-300"
+                          }`}
+                        />
+                        {xodim.is_active ? "Aktiv" : "Nofaol"}
                       </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                          {user.avatar ? (
-                            <img
-                              className="rounded-full w-full h-full"
-                              src={user.avatar.replace("http", "https")}
-                            />
-                          ) : (
-                            <UserOutlined className="text-slate-400 text-xs" />
-                          )}
-                        </div>
-                        <span className="text-sm font-semibold text-slate-700">
-                          {user.fio}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600">
-                        {user.lavozim}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="text-sm text-slate-600">
-                        {user.boshqarma_nomi}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      {user.is_active ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                          Aktiv
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                          Nofaol
-                        </span>
-                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        ) : (
+          <EmptyState title="Bu boshqarmada xodimlar topilmadi" />
         )
-      ) : /* ── HUJJATLAR TABLE ── */
-      hujjatlar.length === 0 ? (
-        <EmptyState
-          icon={<FileDoneOutlined />}
-          text="Bu boshqarmada hujjatlar yo'q"
-        />
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                {[
-                  "#",
-                  "Nomi",
-                  "Obyekt",
-                  "Kategoriya",
-                  "Fayl turi",
-                  "Muddat",
-                  "Holati",
-                ].map((col) => (
-                  <th
-                    key={col}
-                    className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400"
-                  >
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {hujjatlar.map((doc) => {
-                const holat = getHolatConfig(doc.holat);
-                return (
-                  <tr
-                    key={doc.id}
-                    className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors duration-100 cursor-pointer"
-                    onClick={() => navigate(`/hujjatlar/${doc.id}`)}
-                  >
-                    <td className="px-4 py-3.5">
-                      <span className="text-xs font-medium text-slate-400 tabular-nums">
-                        {doc.id}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 max-w-[220px]">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                          <FileOutlined className="text-slate-400 text-xs" />
-                        </div>
-                        <button className="text-sm text-start cursor-pointer hover:underline hover:text-slate-900 font-semibold text-slate-700 line-clamp-2">
-                          {doc.nomi}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 max-w-[160px]">
-                      <span className="text-sm text-slate-600 line-clamp-2">
-                        {doc.obyekt_nomi}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-50 text-violet-600">
-                        {doc.kategoriya_nomi}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 font-mono">
-                        {doc.fayl_turi}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-1.5">
-                        {doc.is_kechikkan && (
-                          <ClockCircleOutlined className="text-red-400 text-xs" />
-                        )}
-                        <span
-                          className={`text-xs font-medium tabular-nums ${
-                            doc.is_kechikkan ? "text-red-500" : "text-slate-500"
-                          }`}
-                        >
-                          {formatDate(doc.muddat)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${holat.bg} ${holat.text}`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${holat.dot}`}
-                        />
-                        {doc.holat_display}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      ) : null}
 
-      {/* ── EDIT MODAL ── */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2 pb-1">
-            <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center">
-              <EditOutlined className="text-slate-500 text-xs" />
-            </div>
-            <span className="text-sm font-semibold text-slate-700">
-              Boshqarmani tahrirlash
-            </span>
+      {activeTab === "hujjatlar" ? (
+        overview?.hujjatlar.length ? (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  {[
+                    "#",
+                    "Nomi",
+                    "Kategoriya",
+                    "Obyekt",
+                    "Yuklovchi",
+                    "Yuklangan sana",
+                    "Holati",
+                  ].map((col) => (
+                    <th
+                      key={col}
+                      className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400"
+                    >
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {overview.hujjatlar.map((doc) => {
+                  const holat = HOLAT_CONFIG[doc.holat] ?? HOLAT_CONFIG.arxiv;
+                  return (
+                    <tr
+                      key={doc.id}
+                      className="cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50"
+                      onClick={() => navigate(`/hujjatlar/${doc.id}`)}
+                    >
+                      <td className="px-4 py-3.5 text-xs font-medium text-slate-400">{doc.id}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="max-w-[220px]">
+                          <p className="line-clamp-2 text-sm font-semibold text-slate-700">
+                            {doc.nomi}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {doc.fayl_turi || "Fayl turi yo'q"} • muddat {formatDate(doc.muddat)}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="max-w-[240px]">
+                          <p className="text-sm text-slate-700">{doc.kategoriya_full_path || doc.kategoriya_nomi || "—"}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-slate-600">{doc.obyekt_nomi || "—"}</td>
+                      <td className="px-4 py-3.5 text-sm text-slate-600">{doc.yuklovchi_fio || "—"}</td>
+                      <td className="px-4 py-3.5 text-sm text-slate-600">{formatDateTime(doc.yuklangan_vaqt)}</td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${holat.bg} ${holat.text}`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${holat.dot}`} />
+                          {doc.holat_display}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        }
+        ) : (
+          <EmptyState title="Bu boshqarmada hujjatlar topilmadi" />
+        )
+      ) : null}
+
+      {activeTab === "obyektlar" ? (
+        overview?.obyektlar.length ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {overview.obyektlar.map((obyekt) => (
+              <button
+                key={obyekt.id}
+                type="button"
+                onClick={() => navigate(`/obyektlar/${obyekt.id}`)}
+                className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-800">{obyekt.nomi}</p>
+                    <p className="mt-1 text-sm text-slate-500">{obyekt.manzil}</p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      STATUS_BADGE[obyekt.holat] ?? "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {obyekt.holat}
+                  </span>
+                </div>
+                <div className="mt-5 space-y-3">
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+                      <span>Bajarilish</span>
+                      <span>{obyekt.bajarilish_foizi}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-100">
+                      <div
+                        className="h-2 rounded-full bg-blue-500"
+                        style={{ width: `${Math.min(100, Math.max(0, obyekt.bajarilish_foizi))}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-slate-600">
+                    <span>Hujjatlar</span>
+                    <span className="font-semibold">{obyekt.hujjatlar_soni} ta</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-slate-600">
+                    <span>Tugash sanasi</span>
+                    <span className="font-semibold">{formatDate(obyekt.tugash_sanasi)}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Bu boshqarma bilan bog'langan obyektlar topilmadi" />
+        )
+      ) : null}
+
+      <Modal
+        title="Boshqarmani tahrirlash"
         open={editModalOpen}
-        onCancel={handleEditCancel}
+        onCancel={() => setEditModalOpen(false)}
         onOk={handleEditSubmit}
         okText="Saqlash"
         cancelText="Bekor qilish"
         confirmLoading={editLoading}
-        okButtonProps={{
-          className: "bg-slate-800 hover:bg-slate-700 border-slate-800",
-        }}
-        width={440}
-        centered
       >
-        <Spin spinning={editFetchLoading}>
-          <Form
-            form={form}
-            layout="vertical"
-            className="mt-4"
-            requiredMark={false}
+        <Form form={editForm} layout="vertical" requiredMark={false}>
+          <Form.Item
+            name="nomi"
+            label="Nomi"
+            rules={[{ required: true, message: "Nomi kiritilishi shart" }]}
           >
-            <Form.Item
-              name="nomi"
-              label={
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  Nomi
-                </span>
-              }
-              rules={[{ required: true, message: "Nomi kiritilishi shart" }]}
-            >
-              <Input
-                placeholder="Boshqarma nomini kiriting"
-                className="rounded-lg text-sm"
-                size="large"
-              />
-            </Form.Item>
+            <Input size="large" />
+          </Form.Item>
+          <Form.Item
+            name="qisqa_nomi"
+            label="Qisqa nomi"
+            rules={[{ required: true, message: "Qisqa nomi kiritilishi shart" }]}
+          >
+            <Input size="large" />
+          </Form.Item>
+        </Form>
+      </Modal>
 
-            <Form.Item
-              name="qisqa_nomi"
-              label={
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  Qisqa nomi
-                </span>
-              }
-              rules={[
-                { required: true, message: "Qisqa nomi kiritilishi shart" },
-              ]}
-            >
-              <Input
-                placeholder="Qisqa nomini kiriting"
-                className="rounded-lg text-sm"
-                size="large"
-              />
-            </Form.Item>
-          </Form>
-        </Spin>
+      <Modal
+        title={`${overview?.boshqarma.nomi || "Boshqarma"} uchun talab yaratish`}
+        open={talabModalOpen}
+        onCancel={() => {
+          setTalabModalOpen(false);
+          talabForm.resetFields();
+        }}
+        onOk={handleTalabCreate}
+        okText="Yaratish"
+        cancelText="Bekor qilish"
+        confirmLoading={talabLoading}
+      >
+        <Form form={talabForm} layout="vertical" requiredMark={false}>
+          <Form.Item
+            name="mavzu"
+            label="Mavzu"
+            rules={[{ required: true, message: "Mavzu kiritilishi shart" }]}
+          >
+            <Input size="large" placeholder="Talab mavzusi" />
+          </Form.Item>
+          <Form.Item name="kategoriya" label="Kategoriya">
+            <Select
+              size="large"
+              allowClear
+              placeholder="Kategoriya tanlang"
+              options={availableKategoriyalar.map((item) => ({
+                value: item.id,
+                label: item.full_path,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item
+            name="mazmun"
+            label="Mazmun"
+            rules={[{ required: true, message: "Mazmun kiritilishi shart" }]}
+          >
+            <Input.TextArea rows={4} placeholder="Talab mazmuni" />
+          </Form.Item>
+          <Form.Item
+            name="muddat"
+            label="Muddat"
+            rules={[{ required: true, message: "Muddat kiritilishi shart" }]}
+          >
+            <input
+              type="date"
+              min={new Date().toISOString().split("T")[0]}
+              className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700 outline-none transition focus:border-blue-500"
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );
 };
-
-/* ── Reusable empty state ── */
-const EmptyState = ({
-  icon,
-  text,
-}: {
-  icon: React.ReactNode;
-  text: string;
-}) => (
-  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center py-20 gap-3">
-    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 text-xl">
-      {icon}
-    </div>
-    <p className="text-sm text-slate-400 font-medium">{text}</p>
-  </div>
-);
 
 export default BoshqarmaSinglePage;
