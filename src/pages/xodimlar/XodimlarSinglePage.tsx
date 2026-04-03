@@ -146,7 +146,12 @@ const XodimlarSinglePage = () => {
       const formData = new FormData();
       formData.append("username", values.username);
       formData.append("fio", values.fio);
-      formData.append("boshqarma", values.boshqarma);
+      formData.append(
+        "boshqarma",
+        values.boshqarma === undefined || values.boshqarma === null
+          ? ""
+          : String(values.boshqarma),
+      );
       formData.append("lavozim", values.lavozim);
       formData.append("telegram_id", values.telegram_id ?? "");
       formData.append("telefon", values.telefon ?? "");
@@ -400,11 +405,9 @@ const XodimlarSinglePage = () => {
               <Form.Item
                 label={<FormLabel>Boshqarma</FormLabel>}
                 name="boshqarma"
-                rules={[
-                  { required: true, message: "Boshqarma tanlash majburiy" },
-                ]}
               >
                 <Select
+                  allowClear
                   className="rounded-lg"
                   placeholder="Tanlang"
                   options={boshqarmalar.map((b) => ({

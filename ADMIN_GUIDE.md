@@ -29,6 +29,7 @@ Tekshirilishi kerak:
 - login va register ishlashi
 - dashboard ochilishi
 - hujjat create/detail/edit oqimi
+- hujjat ko'rinish tanlovi va queryset filteri
 - bayonnoma create/detail/topshiriq qo'shish oqimi
 - talab create/action oqimi
 - obyekt, jarima va topshiriq ro'yxatlari ochilishi
@@ -44,21 +45,23 @@ Yangi endpoint qo'shilsa:
 
 ## 4. Rollar bo'yicha nazorat
 
-### Rais / rahbar
+### Rahbariyat
 
 - dashboard KPI va AI xulosani ko'radi
 - boshqarma monitoringini kuzatadi
 - AI hisobot generation access bo'lishi mumkin
 
-### Boshqarma boshlig'i
+### Boshqarma boshlig'i / boshqarma boshlig'i o'rinbosari
 
 - hujjat tasdiqlash/rad etish
-- topshiriq va talab ijrosini nazorat qilish
+- o'z boshqarmasi xodimlariga topshiriq yaratish
+- talab yaratish, qabul qilish va javob berish
 
-### Oddiy ijrochi
+### Yetakchi muhandis / muhandis
 
 - topshiriqlarni ko'rish
 - izoh va biriktirma yuborish
+- yetakchi muhandis talab bilan ishlaydi, muhandis esa talab actionlarisiz ishlaydi
 
 ## 5. Production sozlamalari
 

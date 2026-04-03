@@ -56,7 +56,10 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
     try {
       const values = await form.validateFields();
       setLoading(true);
-      await api.post(API_ENDPOINTS.USERS.CREATE, values);
+      await api.post(API_ENDPOINTS.USERS.CREATE, {
+        ...values,
+        boshqarma: values.boshqarma ?? null,
+      });
       message.success("Xodim muvaffaqiyatli qo'shildi!");
       form.resetFields();
       onSuccess();
@@ -156,6 +159,7 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
               // rules={[{ required: true, message: "Boshqarmani tanlang" }]}
             >
               <Select
+                allowClear
                 placeholder="Boshqarmani tanlang"
                 size="large"
                 loading={boshqarmaLoading}

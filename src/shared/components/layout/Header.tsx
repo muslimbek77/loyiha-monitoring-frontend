@@ -1,11 +1,50 @@
+import { Badge, Empty, Popover, Spin, Tag } from "antd";
+import { Bell, FileText, LogOut, UserCircle2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "@/store/authStore";
+import api from "@/services/api/axios";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate } from "react-router-dom";
-import { LogOut, UserCircle2 } from "lucide-react";
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  description: string;
+  path: string;
+  tag: string;
+  tone: string;
+};
+
+type TaskNotification = {
+  id: number;
+  mazmun: string;
+  bayonnoma_raqami?: string;
+  is_kechikkan?: boolean;
+  muddat?: string;
+};
+
+type TalabNotification = {
+  id: number;
+  mavzu: string;
+  status_display?: string;
+  ijrochi_boshqarma_nomi?: string;
+  is_kechikkan?: boolean;
+};
+
+type HujjatNotification = {
+  id: number;
+  nomi: string;
+  obyekt_nomi?: string;
+  boshqarma_nomi?: string;
+  holat_display?: string;
+};
 
 const Header = () => {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
 
   const getInitials = (name?: string) => {
     if (!name) return "U";
@@ -16,6 +55,126 @@ const Header = () => {
     if (initials) return initials;
     return name[0]?.toUpperCase() ?? "U";
   };
+
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    const fetchNotifications = async () => {
+      setNotifLoading(true);
+
+      try {
+        const [tasksRes, talablarRes, hujjatlarRes] = await Promise.allSettled([
+          api.get(API_ENDPOINTS.TOPSHIRIQLAR.MENING),
+          api.get(API_ENDPOINTS.TALABLAR.KELGAN),
+          api.get(API_ENDPOINTS.HUJJATLAR.KUTILMOQDA),
+        ]);
+
+        if (cancelled) return;
+
+        const taskItems: NotificationItem[] =
+          tasksRes.status === "fulfilled"
+            ? (tasksRes.value.data ?? []).slice(0, 6).map((item: TaskNotification) => ({
+                id: `task-${item.id}`,
+                title: item.mazmun,
+                description: item.bayonnoma_raqami
+                  ? `Bayonnoma ${item.bayonnoma_raqami}`
+                  : `Muddat: ${item.muddat || "-"}`,
+                path: `/topshiriqlar/${item.id}`,
+                tag: item.is_kechikkan ? "Kechikkan topshiriq" : "Topshiriq",
+                tone: item.is_kechikkan ? "red" : "blue",
+              }))
+            : [];
+
+        const talabItems: NotificationItem[] =
+          talablarRes.status === "fulfilled"
+            ? (talablarRes.value.data ?? []).slice(0, 6).map((item: TalabNotification) => ({
+                id: `talab-${item.id}`,
+                title: item.mavzu,
+                description: item.ijrochi_boshqarma_nomi || item.status_display || "Talab",
+                path: `/talablar/${item.id}`,
+                tag: item.is_kechikkan ? "Kechikkan talab" : "Talab",
+                tone: item.is_kechikkan ? "red" : "green",
+              }))
+            : [];
+
+        const hujjatItems: NotificationItem[] =
+          hujjatlarRes.status === "fulfilled"
+            ? (hujjatlarRes.value.data ?? []).slice(0, 6).map((item: HujjatNotification) => ({
+                id: `hujjat-${item.id}`,
+                title: item.nomi,
+                description: item.obyekt_nomi || item.boshqarma_nomi || "Tasdiqlash kutilmoqda",
+                path: `/hujjatlar/${item.id}`,
+                tag: item.holat_display || "Hujjat",
+                tone: "gold",
+              }))
+            : [];
+
+        setNotifications([...taskItems, ...talabItems, ...hujjatItems].slice(0, 12));
+      } finally {
+        if (!cancelled) setNotifLoading(false);
+      }
+    };
+
+    fetchNotifications();
+    const intervalId = window.setInterval(fetchNotifications, 60000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [user]);
+
+  const notificationPanel = useMemo(
+    () => (
+      <div className="w-[320px] max-w-[calc(100vw-48px)]">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-900">Bildirishnomalar</p>
+          <Tag color="blue" className="mr-0 rounded-full">
+            {notifications.length}
+          </Tag>
+        </div>
+
+        {notifLoading ? (
+          <div className="flex justify-center py-8">
+            <Spin />
+          </div>
+        ) : notifications.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Yangi bildirishnoma yo'q"
+          />
+        ) : (
+          <div className="max-h-[380px] space-y-2 overflow-y-auto pr-1">
+            {notifications.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.path)}
+                className="w-full rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-3 text-left transition hover:border-sky-200 hover:bg-sky-50"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <p className="line-clamp-2 text-sm font-semibold text-slate-800">
+                    {item.title}
+                  </p>
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-xs text-slate-500">
+                    {item.description}
+                  </p>
+                  <Tag color={item.tone} className="mr-0 shrink-0 rounded-full text-[10px]">
+                    {item.tag}
+                  </Tag>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    ),
+    [navigate, notifLoading, notifications],
+  );
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/60 bg-slate-50/80 backdrop-blur-xl">
@@ -29,6 +188,19 @@ const Header = () => {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
+            <Popover
+              content={notificationPanel}
+              trigger="click"
+              placement="bottomRight"
+              arrow={false}
+            >
+              <button className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:text-sky-600 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+                <Badge count={notifications.length} size="small" offset={[2, -2]}>
+                  <Bell className="h-5 w-5" />
+                </Badge>
+              </button>
+            </Popover>
+
             <button
               onClick={() => navigate("/profile")}
               className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
