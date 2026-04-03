@@ -2,27 +2,18 @@ import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useEffect, useState, useCallback } from "react";
 import {
-  Table,
   Tag,
-  Progress,
   Typography,
   Spin,
   Badge,
-  Tooltip,
   Modal,
   Form,
   Input,
-  DatePicker,
   Button,
-  Popconfirm,
   message,
   Upload,
   Select,
-  Card,
-  Empty,
 } from "antd";
-import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
-import type { SorterResult } from "antd/es/table/interface";
 import {
   FileTextOutlined,
   CalendarOutlined,
@@ -42,7 +33,6 @@ import {
   BellOutlined,
   BuildOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { formatDate } from "@/shared/components/const/CustomUI";
 import Can from "@/shared/components/guards/Can";
@@ -235,10 +225,9 @@ const BaseFormFields = ({
         label={<FieldLabel>Sana</FieldLabel>}
         rules={[{ required: true, message: "Sanani tanlang" }]}
       >
-        <DatePicker
-          className="w-full! rounded-lg!"
-          format="YYYY-MM-DD"
-          placeholder="Sanani tanlang"
+        <input
+          type="date"
+          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700 outline-none transition hover:border-indigo-300 focus:border-indigo-500"
         />
       </Form.Item>
     </div>
@@ -574,7 +563,7 @@ const BayonnomalarPage = () => {
     setMeningTopshiriqlarLoading(true);
     try {
       const res = await api.get<MeningTopshiriq[]>(
-        "/bayonnomalar/topshiriqlar/mening/",
+        API_ENDPOINTS.TOPSHIRIQLAR.MENING,
       );
       setMeningTopshiriqlar(res.data);
     } catch {
@@ -588,8 +577,8 @@ const BayonnomalarPage = () => {
   const getAllUsers = async () => {
     setUsersLoading(true);
     try {
-      const res = await api.get<UsersApiResponse>("/auth/users/?all=true");
-      setUsers(res?.data as unknown as User[]);
+      const res = await api.get<UsersApiResponse | User[]>(API_ENDPOINTS.USERS.LIST_ALL);
+      setUsers(Array.isArray(res.data) ? res.data : res.data.results);
     } catch {
       // messageApi.error("Foydalanuvchilarni yuklashda xatolik.");
     } finally {
@@ -605,30 +594,6 @@ const BayonnomalarPage = () => {
     getAllUsers();
     getMeningTopshiriqlar(); // ← NEW
   }, []);
-
-  // ── Handle table change (pagination + sort) ───────────────────────────────
-  const handleTableChange = (
-    pagination: TablePaginationConfig,
-    _filters: unknown,
-    sorter: SorterResult<Bayonnoma> | SorterResult<Bayonnoma>[],
-  ) => {
-    const newPage = pagination.current ?? 1;
-    setCurrentPage(newPage);
-
-    const s = Array.isArray(sorter) ? sorter[0] : sorter;
-    if (s?.columnKey && s?.order) {
-      const prefix = s.order === "descend" ? "-" : "";
-      setOrdering(`${prefix}${s.columnKey}`);
-    } else {
-      setOrdering("");
-    }
-  };
-
-  // ── Search ────────────────────────────────────────────────────────────────
-  const handleSearch = () => {
-    setCurrentPage(1);
-    setSearchValue(searchInput);
-  };
 
   const handleSearchClear = () => {
     setSearchInput("");
@@ -646,21 +611,11 @@ const BayonnomalarPage = () => {
         ? values.ishtirokchilar.join(", ")
         : (values.ishtirokchilar ?? "");
 
-      const topshiriqlar: Record<string, string>[] = (
-        values.topshiriqlar ?? []
-      ).map((item: { props?: { key: string; value: string }[] }) => {
-        const obj: Record<string, string> = {};
-        (item.props ?? []).forEach(({ key, value }) => {
-          if (key) obj[key] = value ?? "";
-        });
-        return obj;
-      });
-
       const file = values.fayl?.[0]?.originFileObj ?? null;
 
       const formData = new FormData();
       formData.append("raqami", values.raqami);
-      formData.append("sana", dayjs(values.sana).format("YYYY-MM-DD"));
+      formData.append("sana", values.sana || "");
       formData.append("mavzu", values.mavzu);
       if (file) formData.append("fayl", file);
       formData.append("ishtirokchilar", ishtirokchilar);
@@ -685,7 +640,7 @@ const BayonnomalarPage = () => {
     setEditTarget(record);
     editForm.setFieldsValue({
       raqami: record.raqami,
-      sana: dayjs(record.sana),
+      sana: record.sana || "",
       mavzu: record.mavzu,
       fayl: "",
       ishtirokchilar: (record as any).ishtirokchilar
@@ -712,14 +667,14 @@ const BayonnomalarPage = () => {
 
       const formData = new FormData();
       formData.append("raqami", values.raqami);
-      formData.append("sana", dayjs(values.sana).format("YYYY-MM-DD"));
+      formData.append("sana", values.sana || "");
       formData.append("mavzu", values.mavzu);
       if (file) formData.append("fayl", file);
       formData.append("ishtirokchilar", ishtirokchilar);
       formData.append("izoh", values.izoh ?? "");
 
       await api.put(
-        `${API_ENDPOINTS.BAYONNOMALAR.LIST}${editTarget.id}/`,
+        API_ENDPOINTS.BAYONNOMALAR.DETAIL(editTarget.id),
         formData,
         { headers: { "Content-Type": "multipart/form-data" } },
       );
@@ -737,8 +692,11 @@ const BayonnomalarPage = () => {
 
   // ── DELETE ─────────────────────────────────────────────────────────────────
   const handleDelete = async (id: number) => {
+    if (!window.confirm("Bayonnomani o'chirishni tasdiqlaysizmi?")) {
+      return;
+    }
     try {
-      await api.delete(`${API_ENDPOINTS.BAYONNOMALAR.LIST}${id}/`);
+      await api.delete(API_ENDPOINTS.BAYONNOMALAR.DETAIL(id));
       messageApi.success("Bayonnoma o'chirildi.");
       const newPage =
         data.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
@@ -758,172 +716,6 @@ const BayonnomalarPage = () => {
       : 0;
   const completed = data.filter((d) => d.bajarilish_foizi === 100).length;
   const totalTasks = data.reduce((s, d) => s + d.topshiriqlar_soni, 0);
-
-  // ── Table columns ──────────────────────────────────────────────────────────
-  const columns: ColumnsType<Bayonnoma> = [
-    {
-      title: <FieldLabel>Raqami</FieldLabel>,
-      dataIndex: "raqami",
-      key: "raqami",
-      width: 130,
-      sorter: true,
-      render: (val: string) => (
-        <Tag
-          color="blue"
-          className="rounded-full! px-3! py-0.5! text-xs! font-bold! font-mono! tracking-wider"
-        >
-          {val}
-        </Tag>
-      ),
-    },
-    {
-      title: <FieldLabel>Sana</FieldLabel>,
-      dataIndex: "sana",
-      key: "sana",
-      width: 170,
-      sorter: true,
-      render: (val: string) => (
-        <div className="flex items-center gap-1.5 text-slate-600 text-sm">
-          <CalendarOutlined className="text-blue-400" />
-          {formatDate(val)}
-        </div>
-      ),
-    },
-    {
-      title: <FieldLabel>Mavzu</FieldLabel>,
-      dataIndex: "mavzu",
-      key: "mavzu",
-      sorter: true,
-      render: (val: string) => (
-        <Tooltip title={val}>
-          <div className="flex items-start gap-2 max-w-xs">
-            <FileTextOutlined className="mt-0.5 shrink-0 text-indigo-400" />
-            <Text
-              ellipsis
-              className="text-slate-800! text-sm! font-medium w-[256px]"
-            >
-              {val}
-            </Text>
-          </div>
-        </Tooltip>
-      ),
-    },
-    {
-      title: <FieldLabel>Yaratuvchi</FieldLabel>,
-      dataIndex: "yaratuvchi_fio",
-      key: "yaratuvchi_fio",
-      width: 220,
-      sorter: true,
-      render: (val: string) => {
-        const initials = val
-          ?.split(" ")
-          .slice(0, 2)
-          .map((w) => w[0])
-          .join("");
-        return (
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">
-              {initials ? initials : <UserOutlined />}
-            </div>
-            <span className="text-sm text-slate-700 leading-tight">
-              {val ? val : "-"}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      title: <FieldLabel>Topshiriqlar</FieldLabel>,
-      dataIndex: "topshiriqlar_soni",
-      key: "topshiriqlar_soni",
-      width: 130,
-      align: "center",
-      sorter: true,
-      render: (val: number) => (
-        <Badge
-          count={val}
-          showZero
-          style={{
-            backgroundColor: "#6366f1",
-            fontWeight: 700,
-            fontSize: 12,
-            minWidth: 28,
-            height: 28,
-            lineHeight: "28px",
-            borderRadius: 14,
-          }}
-        />
-      ),
-    },
-    {
-      title: <FieldLabel>Bajarilish</FieldLabel>,
-      dataIndex: "bajarilish_foizi",
-      key: "bajarilish_foizi",
-      width: 180,
-      sorter: true,
-      render: (val: number) => (
-        <div className="min-w-[140px]">
-          <div className="mb-1 flex items-center justify-between">
-            <span
-              className="text-xs font-bold"
-              style={{ color: getProgressColor(val) }}
-            >
-              {val === 100 ? (
-                <span className="flex items-center gap-1">
-                  <CheckCircleOutlined /> Bajarildi
-                </span>
-              ) : val === 0 ? (
-                <span className="flex items-center gap-1">
-                  <ClockCircleOutlined /> Boshlanmagan
-                </span>
-              ) : (
-                `${val}%`
-              )}
-            </span>
-          </div>
-          <Progress
-            percent={val}
-            status={getProgressStatus(val)}
-            strokeColor={getProgressColor(val)}
-            showInfo={false}
-            size="small"
-            strokeWidth={6}
-            trailColor="#f1f5f9"
-          />
-        </div>
-      ),
-    },
-    {
-      title: <FieldLabel>Amallar</FieldLabel>,
-      key: "actions",
-      width: 100,
-      align: "center",
-      render: (_: unknown, record: Bayonnoma) => (
-        <div
-          className="flex items-center justify-center gap-2"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Tooltip title="O'chirish">
-            <Popconfirm
-              title="Bayonnomani o'chirish"
-              description="Haqiqatan ham o'chirmoqchimisiz?"
-              onConfirm={() => handleDelete(record.id)}
-              okText="Ha"
-              cancelText="Yo'q"
-              okButtonProps={{ danger: true }}
-            >
-              <Button
-                size="small"
-                type="text"
-                icon={<DeleteOutlined className="text-red-400" />}
-                className="rounded-lg!"
-              />
-            </Popconfirm>
-          </Tooltip>
-        </div>
-      ),
-    },
-  ];
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -1027,6 +819,22 @@ const BayonnomalarPage = () => {
                 className="rounded-lg!"
                 size="middle"
               />
+              <Select
+                value={ordering || "-sana"}
+                onChange={(val) => {
+                  setOrdering(val);
+                  setCurrentPage(1);
+                }}
+                options={[
+                  { value: "-sana", label: "Eng yangi" },
+                  { value: "sana", label: "Eng eski" },
+                  { value: "raqami", label: "Raqam A-Z" },
+                  { value: "-raqami", label: "Raqam Z-A" },
+                  { value: "mavzu", label: "Mavzu A-Z" },
+                  { value: "-bajarilish_foizi", label: "Foiz yuqori" },
+                ]}
+                className="min-w-[150px]"
+              />
             </div>
 
             <span className="text-xs text-slate-400 shrink-0">
@@ -1035,55 +843,190 @@ const BayonnomalarPage = () => {
           </div>
 
           <Spin spinning={loading} tip="Yuklanmoqda...">
-            <Table<Bayonnoma>
-              dataSource={data}
-              columns={columns}
-              rowKey="id"
-              onChange={handleTableChange}
-              onRow={(record) => ({
-                onClick: () => navigate(`/bayonnomalar/${record.id}`),
-                style: { cursor: "pointer" },
-              })}
-              pagination={{
-                current: currentPage,
-                pageSize: PAGE_SIZE,
-                total: total,
-                showSizeChanger: false,
-                showTotal: (t, range) => (
-                  <span className="text-slate-500 text-xs">
-                    {range[0]}–{range[1]} / {t} ta yozuv
+            {data.length === 0 ? (
+              <div className="py-16 text-center">
+                <FileTextOutlined className="mb-3 text-4xl text-slate-300" />
+                <p className="text-slate-400">
+                  {searchValue
+                    ? `"${searchValue}" bo'yicha natija topilmadi`
+                    : "Bayonnomalar topilmadi"}
+                </p>
+                {searchValue && (
+                  <Button
+                    size="small"
+                    type="link"
+                    onClick={handleSearchClear}
+                    className="text-indigo-500"
+                  >
+                    Filtrni tozalash
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                        <th className="px-4 py-3">Raqami</th>
+                        <th className="px-4 py-3">Sana</th>
+                        <th className="px-4 py-3">Mavzu</th>
+                        <th className="px-4 py-3">Yaratuvchi</th>
+                        <th className="px-4 py-3 text-center">Topshiriqlar</th>
+                        <th className="px-4 py-3">Bajarilish</th>
+                        <th className="px-4 py-3 text-right">Amallar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.map((record, idx) => {
+                        const initials = record.yaratuvchi_fio
+                          ?.split(" ")
+                          .slice(0, 2)
+                          .map((w) => w[0])
+                          .join("");
+
+                        return (
+                          <tr
+                            key={record.id}
+                            onClick={() => navigate(`/bayonnomalar/${record.id}`)}
+                            className={`cursor-pointer border-t border-slate-100 transition hover:bg-indigo-50 ${
+                              idx % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                            }`}
+                          >
+                            <td className="px-4 py-4">
+                              <Tag
+                                color="blue"
+                                className="rounded-full! px-3! py-0.5! text-xs! font-bold! font-mono! tracking-wider"
+                              >
+                                {record.raqami}
+                              </Tag>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                                <CalendarOutlined className="text-blue-400" />
+                                {formatDate(record.sana)}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex max-w-xs items-start gap-2">
+                                <FileTextOutlined className="mt-0.5 shrink-0 text-indigo-400" />
+                                <span
+                                  title={record.mavzu}
+                                  className="line-clamp-2 text-sm font-medium text-slate-800"
+                                >
+                                  {record.mavzu}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">
+                                  {initials ? initials : <UserOutlined />}
+                                </div>
+                                <span className="text-sm text-slate-700">
+                                  {record.yaratuvchi_fio || "-"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 text-center">
+                              <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-indigo-500 px-2 py-1 text-xs font-bold text-white">
+                                {record.topshiriqlar_soni}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="min-w-[150px]">
+                                <div className="mb-1 flex items-center justify-between">
+                                  <span
+                                    className="text-xs font-bold"
+                                    style={{
+                                      color: getProgressColor(record.bajarilish_foizi),
+                                    }}
+                                  >
+                                    {record.bajarilish_foizi === 100
+                                      ? "Bajarildi"
+                                      : record.bajarilish_foizi === 0
+                                        ? "Boshlanmagan"
+                                        : `${record.bajarilish_foizi}%`}
+                                  </span>
+                                  <span className="text-xs text-slate-400">
+                                    {getProgressStatus(record.bajarilish_foizi)}
+                                  </span>
+                                </div>
+                                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                                  <div
+                                    className="h-full rounded-full transition-all"
+                                    style={{
+                                      width: `${record.bajarilish_foizi}%`,
+                                      backgroundColor: getProgressColor(
+                                        record.bajarilish_foizi,
+                                      ),
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td
+                              className="px-4 py-4 text-right"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="small"
+                                  type="text"
+                                  icon={<EditOutlined className="text-slate-500" />}
+                                  onClick={() => openEdit(record)}
+                                  className="rounded-lg!"
+                                />
+                                <Button
+                                  size="small"
+                                  type="text"
+                                  icon={<DeleteOutlined className="text-red-400" />}
+                                  onClick={() => handleDelete(record.id)}
+                                  className="rounded-lg!"
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
+                  <span className="text-xs text-slate-500">
+                    {(currentPage - 1) * PAGE_SIZE + 1}–
+                    {Math.min(currentPage * PAGE_SIZE, total)} / {total} ta yozuv
                   </span>
-                ),
-              }}
-              rowClassName={(_, idx) =>
-                idx % 2 === 0
-                  ? "!bg-white hover:!bg-indigo-50 transition-colors"
-                  : "!bg-slate-50/60 hover:!bg-indigo-50 transition-colors"
-              }
-              className="[&_.ant-table-thead>tr>th]:bg-slate-50! [&_.ant-table-thead>tr>th]:!border-b [&_.ant-table-thead>tr>th]:!border-slate-200 [&_.ant-table-cell]:!py-4 [&_.ant-table-cell]:!align-middle"
-              locale={{
-                emptyText: (
-                  <div className="py-16 text-center">
-                    <FileTextOutlined className="mb-3 text-4xl text-slate-300" />
-                    <p className="text-slate-400">
-                      {searchValue
-                        ? `"${searchValue}" bo'yicha natija topilmadi`
-                        : "Bayonnomalar topilmadi"}
-                    </p>
-                    {searchValue && (
-                      <Button
-                        size="small"
-                        type="link"
-                        onClick={handleSearchClear}
-                        className="text-indigo-500"
-                      >
-                        Filtrni tozalash
-                      </Button>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={currentPage === 1}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Oldingi
+                    </button>
+                    <span className="text-sm text-slate-500">
+                      {currentPage} / {Math.max(1, Math.ceil(total / PAGE_SIZE))}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(Math.max(1, Math.ceil(total / PAGE_SIZE)), prev + 1),
+                        )
+                      }
+                      disabled={currentPage >= Math.max(1, Math.ceil(total / PAGE_SIZE))}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Keyingi
+                    </button>
                   </div>
-                ),
-              }}
-            />
+                </div>
+              </>
+            )}
           </Spin>
         </div>
       </div>

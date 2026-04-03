@@ -1,5 +1,6 @@
 import { useAuthStore } from "@/store/authStore";
 import { useNavigate } from "react-router-dom";
+import { LogOut, UserCircle2 } from "lucide-react";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -17,61 +18,43 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
-      <div className=" mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mt-5 mb-3">
-          {/* Right Section */}
-          <div className="flex items-center gap-3 ml-auto">
-            {/* Profile Button */}
+    <header className="sticky top-0 z-40 border-b border-white/60 bg-slate-50/80 backdrop-blur-xl">
+      <div className="px-4 py-4 sm:px-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="page-kicker">Boshqaruv paneli</p>
+            <h1 className="truncate text-lg font-semibold text-slate-900">
+              Loyiha monitoring tizimi
+            </h1>
+          </div>
+
+          <div className="ml-auto flex items-center gap-3">
             <button
               onClick={() => navigate("/profile")}
-              className="group flex items-center cursor-pointer gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 hover:from-indigo-50 hover:to-purple-50 border border-gray-200 hover:border-indigo-200 transition-all duration-300 hover:shadow-md"
+              className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-semibold shadow-sm group-hover:scale-110 transition-transform">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-500 text-sm font-semibold text-white shadow-sm transition-transform group-hover:scale-105">
                 {getInitials(user?.fio)}
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                <p className="text-sm font-semibold text-slate-900 transition-colors group-hover:text-sky-600">
                   {user?.fio || "Foydalanuvchi"}
                 </p>
-                <p className="text-xs text-gray-500">Profilni ko'rish</p>
+                <p className="text-xs text-slate-500">
+                  {user?.lavozim_display || "Profilni ko'rish"}
+                </p>
               </div>
-              <svg
-                className="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors hidden sm:block"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
+              <UserCircle2 className="hidden h-4 w-4 text-slate-400 transition-colors group-hover:text-sky-600 sm:block" />
             </button>
 
-            {/* Logout Button */}
             <button
               onClick={async () => {
                 await logout();
                 navigate("/auth/login");
               }}
-              className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer"
+              className="group flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800"
             >
-              <svg
-                className="w-5 h-5 group-hover:rotate-12 transition-transform"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
+              <LogOut className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               <span className="hidden sm:inline">Chiqish</span>
             </button>
           </div>

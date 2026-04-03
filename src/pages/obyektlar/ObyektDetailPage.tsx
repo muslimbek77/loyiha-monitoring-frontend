@@ -34,6 +34,25 @@ interface Obyekt {
   masul_xodim_fio?: string;
   tavsif: string;
   rasm?: string;
+  holat_display?: string;
+  hujjatlar_soni?: number;
+  is_muammoli?: boolean;
+}
+
+interface ObyektYangilik {
+  id: number;
+  muallif_fio: string;
+  matn: string;
+  foiz_ozgarish: number;
+  created_at: string;
+}
+
+interface ObyektHujjat {
+  id: number;
+  nomi: string;
+  holat_display: string;
+  fayl_turi: string;
+  muddat: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -149,23 +168,35 @@ const ObyektDetailPage = () => {
 
   const [data, setData] = useState<Obyekt | null>(null);
   const [loading, setLoading] = useState(true);
-  const [xodimId, setXodimId] = useState<number | null>(null);
+  const [yangiliklar, setYangiliklar] = useState<ObyektYangilik[]>([]);
+  const [hujjatlar, setHujjatlar] = useState<ObyektHujjat[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [obyektRes, xodimRes] = await Promise.all([
-          api.get(`${API_ENDPOINTS.OBYEKTLAR.LIST}${id}/`),
-          api.get("/auth/users/").catch(() => ({ data: { results: [] } })),
+        const [obyektRes, xodimRes, yangilikRes, hujjatRes] = await Promise.all([
+          api.get(API_ENDPOINTS.OBYEKTLAR.DETAIL(id!)),
+          api
+            .get(API_ENDPOINTS.USERS.LIST)
+            .catch(() => ({ data: { results: [] } })),
+          api
+            .get(API_ENDPOINTS.OBYEKTLAR.YANGILIKLAR(id!))
+            .catch(() => ({ data: [] })),
+          api
+            .get(API_ENDPOINTS.HUJJATLAR.OBYEKT_HUJJATLARI, {
+              params: { obyekt: id },
+            })
+            .catch(() => ({ data: [] })),
         ]);
-        console.log(obyektRes?.data);
 
         const d = obyektRes.data;
         const xodimlar: { id: number; fio: string }[] =
           xodimRes.data.results ?? [];
         const masul = xodimlar.find((x) => x.id === d.masul_xodim);
         setData({ ...d, masul_xodim_fio: masul?.fio });
+        setYangiliklar(yangilikRes.data.results ?? yangilikRes.data ?? []);
+        setHujjatlar(hujjatRes.data.results ?? hujjatRes.data ?? []);
       } catch (err) {
         console.error(err);
         message.error("Ma'lumot yuklanmadi");
@@ -215,7 +246,15 @@ const ObyektDetailPage = () => {
     return diff;
   })();
 
-  console.log(data);
+  const obyektSummary = [
+    data.is_muammoli ? "Obyekt monitoring bo'yicha muammoli deb belgilangan." : "Obyekt nazorat ostida.",
+    `${data.hujjatlar_soni ?? hujjatlar.length} ta hujjat obyektga biriktirilgan.`,
+    daysLeft !== null
+      ? daysLeft < 0
+        ? `Muddat ${Math.abs(daysLeft)} kun oldin o'tgan.`
+        : `${daysLeft} kun muddat qoldi.`
+      : "Tugash muddati ko'rsatilmagan.",
+  ].join(" ");
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
@@ -302,10 +341,23 @@ const ObyektDetailPage = () => {
             value={data.masul_xodim_fio ? `${data.masul_xodim_fio}` : null}
           />
           <InfoRow
+            label="Hujjatlar soni"
+            icon={<FileTextOutlined />}
+            value={data.hujjatlar_soni ?? hujjatlar.length}
+          />
+          <InfoRow
             label="Manzil"
             icon={<EnvironmentOutlined />}
             value={data.manzil}
           />
+        </div>
+
+        <SectionDivider title="Operativ xulosa" />
+        <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+            Obyekt holati bo'yicha xulosa
+          </p>
+          <p className="mt-2 text-sm leading-7 text-slate-700">{obyektSummary}</p>
         </div>
 
         {/* ── Muddatlar ── */}
@@ -406,6 +458,66 @@ const ObyektDetailPage = () => {
               <p>{data.tavsif}</p>
             </div>
           </>
+        )}
+
+        <SectionDivider title="So'nggi yangiliklar" />
+        {yangiliklar.length ? (
+          <div className="space-y-3">
+            {yangiliklar.slice(0, 5).map((item) => (
+              <div
+                key={item.id}
+                className="rounded-2xl border border-slate-200 px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-800">
+                    {item.muallif_fio}
+                  </p>
+                  <span className="text-xs text-slate-400">
+                    {dayjs(item.created_at).format("DD.MM.YYYY HH:mm")}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{item.matn}</p>
+                {item.foiz_ozgarish > 0 && (
+                  <span className="mt-2 inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600">
+                    +{item.foiz_ozgarish}% progress
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500">
+            Obyekt bo'yicha yangiliklar hali mavjud emas.
+          </div>
+        )}
+
+        <SectionDivider title="Biriktirilgan hujjatlar" />
+        {hujjatlar.length ? (
+          <div className="space-y-3">
+            {hujjatlar.slice(0, 6).map((doc) => (
+              <button
+                key={doc.id}
+                onClick={() => navigate(`/hujjatlar/${doc.id}`)}
+                className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 px-4 py-3 text-left transition hover:border-blue-200 hover:bg-slate-50"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800">
+                    {doc.nomi}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {doc.fayl_turi} • {formatDate(doc.muddat)}
+                  </p>
+                </div>
+                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                  {doc.holat_display}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500">
+            Obyektga biriktirilgan hujjatlar topilmadi.
+          </div>
         )}
       </div>
     </div>

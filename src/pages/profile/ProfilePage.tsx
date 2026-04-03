@@ -4,7 +4,6 @@ import type { AxiosError } from "axios";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
-import { data } from "react-router-dom";
 
 type ErrorResponse = {
   message?: string;

@@ -9,7 +9,6 @@ import {
   Users,
   MessageSquare,
   Pin,
-  Banknote,
 } from "lucide-react";
 import { usePermissions } from "@/features/auth/hooks/usePermissions";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -55,12 +54,6 @@ const navItems: {
     icon: Users,
     permission: "canManageUsers",
   },
-  {
-    label: "Kategoriyalar",
-    path: "/kategoriyalar",
-    icon: ClipboardList,
-    // permission: "canManageUsers",
-  },
 ];
 
 const Sidebar = () => {
@@ -72,17 +65,27 @@ const Sidebar = () => {
   );
 
   return (
-    <div className="flex flex-col justify-between w-[240px] min-h-screen bg-[#0f1117] border-r border-white/10 px-3 py-6 font-sans">
+    <aside className="hidden h-screen w-[280px] shrink-0 border-r border-slate-200/70 bg-slate-950 text-slate-100 lg:sticky lg:top-0 lg:flex lg:flex-col">
       {/* Top Section */}
-      <div>
+      <div className="flex-1 px-4 py-6">
         {/* Logo */}
-        <div className="flex items-center gap-2 px-3 pb-6 mb-4 border-b border-white/10">
-          <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-sm font-bold">
+        <div className="mb-6 rounded-3xl border border-white/10 bg-white/5 px-4 py-4 shadow-[0_20px_50px_rgba(15,23,42,0.35)]">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-[0_14px_28px_rgba(56,189,248,0.35)]">
             LM
-          </span>
-          <span className="text-white font-semibold text-lg tracking-tight">
-            Loyiha Monitoring
-          </span>
+            </span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-300/80">
+                Monitoring
+              </p>
+              <span className="text-base font-semibold tracking-tight text-white">
+                Loyiha boshqaruvi
+              </span>
+            </div>
+          </div>
+          <p className="text-sm leading-6 text-slate-300/80">
+            Barcha ish jarayonlari, hujjatlar va topshiriqlarni yagona paneldan boshqaring.
+          </p>
         </div>
 
         {/* Navigation */}
@@ -98,20 +101,25 @@ const Sidebar = () => {
                 key={path}
                 to={path}
                 className={`
-                  relative flex items-center gap-3 w-full
-                  px-3 py-2.5 rounded-lg text-sm transition-all duration-150
+                  relative flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-150
                   ${
                     isActive
-                      ? "bg-indigo-500/15 text-indigo-400 font-medium"
-                      : "text-white/50 hover:bg-white/5 hover:text-white/90"
+                      ? "bg-gradient-to-r from-sky-500/20 to-indigo-500/20 text-white shadow-[inset_0_0_0_1px_rgba(125,211,252,0.24)]"
+                      : "text-slate-300/70 hover:bg-white/6 hover:text-white"
                   }
                 `}
               >
                 {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-indigo-500 rounded-r-sm" />
+                  <span className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-sm bg-sky-400" />
                 )}
-                <Icon size={18} className="opacity-80" />
-                {label}
+                <span
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                    isActive ? "bg-white/10 text-sky-200" : "bg-white/5 text-slate-300"
+                  }`}
+                >
+                  <Icon size={18} className="opacity-90" />
+                </span>
+                <span className="font-medium">{label}</span>
               </Link>
             );
           })}
@@ -119,13 +127,13 @@ const Sidebar = () => {
       </div>
 
       {/* Footer */}
-      <footer className="text-center py-4 pb-0 border-t border-white/10">
-        <div className="text-xs text-gray-400">© 2026 Loyiha Monitoring</div>
-        <div className="text-[11px] mt-1 font-semibold tracking-wide text-indigo-400">
+      <footer className="border-t border-white/10 px-6 py-5">
+        <div className="text-xs text-slate-400">© 2026 Loyiha Monitoring</div>
+        <div className="mt-1 text-[11px] font-semibold tracking-wide text-sky-300">
           Ko'prikqurilish AJ
         </div>
       </footer>
-    </div>
+    </aside>
   );
 };
 

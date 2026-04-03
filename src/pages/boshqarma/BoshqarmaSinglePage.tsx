@@ -15,6 +15,7 @@ import {
   ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 
 interface UserType {
   id: number;
@@ -22,6 +23,7 @@ interface UserType {
   lavozim: string;
   boshqarma_nomi: string;
   is_active: boolean;
+  avatar?: string | null;
 }
 
 interface HujjatType {
@@ -131,6 +133,7 @@ const BoshqarmaSinglePage = () => {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<TabKey>("xodimlar");
+  const [detail, setDetail] = useState<BoshqarmaType | null>(null);
 
   const [users, setUsers] = useState<UserType[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -150,7 +153,8 @@ const BoshqarmaSinglePage = () => {
   const fetchBoshqarmaDetail = async () => {
     try {
       setEditFetchLoading(true);
-      const res = await api.get<BoshqarmaType>(`core/boshqarmalar/${id}/`);
+      const res = await api.get<BoshqarmaType>(API_ENDPOINTS.BOSHQARMA.DETAIL(id!));
+      setDetail(res.data);
       form.setFieldsValue({
         nomi: res.data.nomi,
         qisqa_nomi: res.data.qisqa_nomi,
@@ -171,8 +175,10 @@ const BoshqarmaSinglePage = () => {
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
-      const res = await api.get(`auth/users/?boshqarma=${id}`);
-      setUsers(res.data.results);
+      const res = await api.get(API_ENDPOINTS.USERS.LIST, {
+        params: { boshqarma: id, all: true },
+      });
+      setUsers(res.data.results ?? res.data);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
@@ -183,10 +189,10 @@ const BoshqarmaSinglePage = () => {
   const fetchHujjatlar = async () => {
     try {
       setHujjatlarLoading(true);
-      const res = await api.get(
-        `hujjatlar/boshqarma_hujjatlari/?boshqarma=${id}`,
-      );
-      setHujjatlar(res.data);
+      const res = await api.get(API_ENDPOINTS.HUJJATLAR.BOSHQARMA_HUJJATLARI, {
+        params: { boshqarma: id },
+      });
+      setHujjatlar(res.data.results ?? res.data);
     } catch (error) {
       console.error("Error fetching hujjatlar:", error);
     } finally {
@@ -198,7 +204,7 @@ const BoshqarmaSinglePage = () => {
     try {
       setStatistikaLoading(true);
       const res = await api.get<StatistikaType>(
-        `core/boshqarmalar/${id}/statistika/`,
+        API_ENDPOINTS.BOSHQARMA.STATISTIKA(id!),
       );
       setStatistika(res.data);
     } catch (error) {
@@ -212,10 +218,11 @@ const BoshqarmaSinglePage = () => {
     try {
       const values = await form.validateFields();
       setEditLoading(true);
-      await api.put(`core/boshqarmalar/${id}/`, values);
+      await api.put(API_ENDPOINTS.BOSHQARMA.DETAIL(id!), values);
       message.success("Boshqarma muvaffaqiyatli yangilandi");
       setEditModalOpen(false);
       form.resetFields();
+      fetchBoshqarmaDetail();
     } catch (error) {
       console.error("Error updating boshqarma:", error);
       message.error("Yangilashda xatolik yuz berdi");
@@ -226,7 +233,7 @@ const BoshqarmaSinglePage = () => {
 
   const handleDelete = async () => {
     try {
-      await api.delete(`core/boshqarmalar/${id}/`);
+      await api.delete(API_ENDPOINTS.BOSHQARMA.DETAIL(id!));
       message.success("Boshqarma muvaffaqiyatli o'chirildi");
       navigate("/boshqarma");
     } catch (error) {
@@ -242,6 +249,7 @@ const BoshqarmaSinglePage = () => {
 
   useEffect(() => {
     if (id) {
+      fetchBoshqarmaDetail();
       fetchUsers();
       fetchHujjatlar();
       fetchStatistika();
@@ -265,6 +273,16 @@ const BoshqarmaSinglePage = () => {
       label: holat,
     };
 
+  const boshqarmaSummary = statistika
+    ? [
+        `${statistika.xodimlar_soni} ta faol xodim mavjud.`,
+        `${statistika.hujjatlar_soni} ta hujjat boshqarma bilan bog'langan.`,
+        statistika.bajarilmagan_topshiriqlar > 0
+          ? `${statistika.bajarilmagan_topshiriqlar} ta topshiriq bajarilmagan holatda.`
+          : "Bajarilmagan topshiriqlar yo'q.",
+      ].join(" ")
+    : "";
+
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
       {/* Back + header */}
@@ -279,11 +297,16 @@ const BoshqarmaSinglePage = () => {
 
         <div className="flex items-center justify-between">
           <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Boshqarma detail
+            </p>
             <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
-              {activeTab === "xodimlar"
-                ? "Xodimlar ro'yxati"
-                : "Hujjatlar ro'yxati"}
+              {detail?.nomi || "Boshqarma"}
             </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              {detail?.qisqa_nomi || "—"} •{" "}
+              {activeTab === "xodimlar" ? "Xodimlar ro'yxati" : "Hujjatlar ro'yxati"}
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -337,6 +360,15 @@ const BoshqarmaSinglePage = () => {
           </div>
         ) : null}
       </div>
+
+      {boshqarmaSummary && (
+        <div className="mb-6 rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+            Operativ xulosa
+          </p>
+          <p className="mt-2 text-sm leading-7 text-slate-700">{boshqarmaSummary}</p>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-5 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">

@@ -19,6 +19,7 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate } from "react-router-dom";
 import Can from "@/shared/components/guards/Can";
 
@@ -235,7 +236,7 @@ const ChatXonalarPage = () => {
 
   const fetchXonalar = async () => {
     try {
-      const res = await api.get<ApiResponse>("chat/xonalar/");
+      const res = await api.get<ApiResponse>(API_ENDPOINTS.CHAT_XONALAR.LIST);
       setData(res.data);
       if (res.data.results.length > 0) setActiveId(res.data.results[0].id);
     } catch (err: any) {
@@ -250,7 +251,9 @@ const ChatXonalarPage = () => {
   const fetchObyektlar = async () => {
     setObyektlarLoading(true);
     try {
-      const res = await api.get<{ results: Obyekt[] } | Obyekt[]>("obyektlar/");
+      const res = await api.get<{ results: Obyekt[] } | Obyekt[]>(
+        API_ENDPOINTS.OBYEKTLAR.LIST,
+      );
       // Handle both paginated and plain array responses
       const list = Array.isArray(res.data) ? res.data : res.data.results;
       setObyektlar(list);
@@ -264,7 +267,9 @@ const ChatXonalarPage = () => {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const res = await api.get<{ results: User[] } | User[]>("auth/users/");
+      const res = await api.get<{ results: User[] } | User[]>(
+        API_ENDPOINTS.USERS.LIST,
+      );
       const list = Array.isArray(res.data) ? res.data : res.data.results;
       setUsers(list);
     } catch {
@@ -283,7 +288,7 @@ const ChatXonalarPage = () => {
   }) => {
     setCreateLoading(true);
     try {
-      const res = await api.post<Xona>("chat/xonalar/", {
+      const res = await api.post<Xona>(API_ENDPOINTS.CHAT_XONALAR.LIST, {
         nomi: values.nomi,
         turi: values.turi,
         obyekt: values.obyekt ?? null,

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Table,
   Button,
   Modal,
   Form,
@@ -9,14 +8,10 @@ import {
   Select,
   InputNumber,
   Tag,
-  Space,
-  Popconfirm,
   message,
   Card,
   Statistic,
   Badge,
-  Tooltip,
-  Divider,
   Empty,
   Spin,
 } from "antd";
@@ -24,13 +19,10 @@ import {
   PlusOutlined,
   DeleteOutlined,
   EditOutlined,
-  ExclamationCircleOutlined,
   BarChartOutlined,
   TeamOutlined,
   WarningOutlined,
-  ReloadOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { formatDate } from "@/shared/components/const/CustomUI";
@@ -137,8 +129,11 @@ const JarimalarPage = () => {
   }, []);
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm("Bu jarimani o'chirishni tasdiqlaysizmi?")) {
+      return;
+    }
     try {
-      await api.delete(`${API_ENDPOINTS.JARIMALAR.LIST}${id}/`);
+      await api.delete(API_ENDPOINTS.JARIMALAR.DETAIL(id));
       message.success("Jarima o'chirildi");
       fetchJarimalar(page);
       fetchStatistika();
@@ -149,11 +144,14 @@ const JarimalarPage = () => {
 
   const handleSubmit = async (values: Record<string, unknown>) => {
     try {
-      //   const method = editItem ? "PUT" : "POST";
       const url = editItem
-        ? `${API_ENDPOINTS.JARIMALAR.LIST}${editItem.id}/`
-        : `${API_ENDPOINTS.JARIMALAR.LIST}`;
-      await api.post(url, values);
+        ? API_ENDPOINTS.JARIMALAR.DETAIL(editItem.id)
+        : API_ENDPOINTS.JARIMALAR.LIST;
+      if (editItem) {
+        await api.put(url, values);
+      } else {
+        await api.post(url, values);
+      }
 
       message.success(editItem ? "Jarima yangilandi" : "Jarima qo'shildi");
       setModalOpen(false);
@@ -177,94 +175,6 @@ const JarimalarPage = () => {
     form.resetFields();
     setModalOpen(true);
   };
-
-  const columns: ColumnsType<Jarima> = [
-    {
-      title: "#",
-      dataIndex: "id",
-      width: 60,
-      render: (id) => (
-        <span className="text-gray-400 text-xs font-mono">{id}</span>
-      ),
-    },
-    {
-      title: "Boshqarma",
-      dataIndex: "boshqarma_nomi",
-      render: (val) => (
-        <span className="font-semibold text-slate-700">{val}</span>
-      ),
-    },
-    {
-      title: "Sabab",
-      dataIndex: "sabab",
-      render: (_, record) => (
-        <Tag color={sabab_colors[record.sabab] ?? "default"}>
-          {record.sabab_display}
-        </Tag>
-      ),
-    },
-    {
-      title: "Ball",
-      dataIndex: "ball",
-      width: 80,
-      render: (ball) => <span className="font-bold text-red-500">−{ball}</span>,
-    },
-    {
-      title: "Turi",
-      dataIndex: "avtomatik",
-      width: 100,
-      render: (val) =>
-        val ? (
-          <Badge
-            className="flex! items-center!"
-            status="processing"
-            text="Avtomatik"
-          />
-        ) : (
-          <Badge status="default" text="Qo'lda" />
-        ),
-    },
-    {
-      title: "Sana",
-      dataIndex: "created_at",
-      render: (val) =>
-        formatDate(val) || <span className="text-gray-400 text-xs">-</span>,
-    },
-    {
-      title: "Amallar",
-      width: 100,
-      render: (_, record) => (
-        <Space size="small">
-          {/* <Tooltip title="Tahrirlash">
-            <Button
-              size="small"
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => openEdit(record)}
-              className="text-blue-500 hover:text-blue-700"
-            />
-          </Tooltip> */}
-          <Popconfirm
-            title="O'chirishni tasdiqlang"
-            description="Bu jarima o'chiriladi. Davom etasizmi?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Ha"
-            cancelText="Yo'q"
-            icon={<ExclamationCircleOutlined className="text-red-500" />}
-          >
-            <Tooltip title="O'chirish">
-              <Button
-                size="small"
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-              />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
 
   const totalMinus = statistika.reduce((sum, s) => sum + s.jami_minus, 0);
   const totalJarimalar = statistika.reduce(
@@ -290,18 +200,16 @@ const JarimalarPage = () => {
               </p>
             </div>
           </div>
-          <Space>
-            <Can action="canCreate">
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={openCreate}
-                className="bg-slate-800 border-slate-800 hover:bg-slate-700 rounded-xl!"
-              >
-                Jarima qo'shish
-              </Button>
-            </Can>
-          </Space>
+          <Can action="canCreate">
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={openCreate}
+              className="bg-slate-800 border-slate-800 hover:bg-slate-700 rounded-xl!"
+            >
+              Jarima qo'shish
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -407,7 +315,7 @@ const JarimalarPage = () => {
                         </span>
                         {s.jarimalar_soni > 0 && (
                           <>
-                            <Divider type="vertical" className="m-0 h-3" />
+                            <span className="h-3 w-px bg-slate-200" />
                             <span className="text-xs text-red-400">
                               {s.jarimalar_soni} jarima
                             </span>
@@ -427,31 +335,130 @@ const JarimalarPage = () => {
         className="border border-slate-100 shadow-sm rounded-2xl"
         bodyStyle={{ padding: 0 }}
       >
-        <Table
-          columns={columns}
-          dataSource={jarimalar}
-          onRow={(record) => ({
-            onClick: () => navigate(`/jarimalar/${record.id}`),
-          })}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            current: page,
-            total,
-            pageSize: 10,
-            onChange: (p) => {
-              setPage(p);
-              fetchJarimalar(p);
-            },
-            showTotal: (t) => (
-              <span className="text-xs text-slate-400">Jami: {t} ta</span>
-            ),
-            size: "small",
-          }}
-          rowClassName="hover:bg-slate-50/60 transition-colors cursor-pointer"
-          className="overflow-hidden"
-          locale={{ emptyText: <Empty description="Jarimalar yo'q" /> }}
-        />
+        {loading ? (
+          <div className="py-20">
+            <Spin />
+          </div>
+        ) : jarimalar.length === 0 ? (
+          <Empty description="Jarimalar yo'q" />
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                    <th className="px-4 py-3">#</th>
+                    <th className="px-4 py-3">Boshqarma</th>
+                    <th className="px-4 py-3">Sabab</th>
+                    <th className="px-4 py-3">Ball</th>
+                    <th className="px-4 py-3">Turi</th>
+                    <th className="px-4 py-3">Sana</th>
+                    <th className="px-4 py-3 text-right">Amallar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jarimalar.map((record) => (
+                    <tr
+                      key={record.id}
+                      onClick={() => navigate(`/jarimalar/${record.id}`)}
+                      className="cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50/60"
+                    >
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-xs text-gray-400">
+                          {record.id}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-semibold text-slate-700">
+                          {record.boshqarma_nomi}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Tag color={sabab_colors[record.sabab] ?? "default"}>
+                          {record.sabab_display}
+                        </Tag>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-bold text-red-500">
+                          −{record.ball}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {record.avtomatik ? (
+                          <Badge
+                            className="flex! items-center!"
+                            status="processing"
+                            text="Avtomatik"
+                          />
+                        ) : (
+                          <Badge status="default" text="Qo'lda" />
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {formatDate(record.created_at) || (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="small"
+                            type="text"
+                            icon={<EditOutlined />}
+                            onClick={() => openEdit(record)}
+                            className="text-blue-500 hover:text-blue-700"
+                          />
+                          <Button
+                            size="small"
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleDelete(record.id)}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between border-t border-slate-100 px-5 py-4">
+              <span className="text-xs text-slate-400">Jami: {total} ta</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = Math.max(1, page - 1);
+                    setPage(next);
+                    fetchJarimalar(next);
+                  }}
+                  disabled={page === 1}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Oldingi
+                </button>
+                <span className="text-sm text-slate-500">
+                  {page} / {Math.max(1, Math.ceil(total / 10))}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = Math.min(Math.max(1, Math.ceil(total / 10)), page + 1);
+                    setPage(next);
+                    fetchJarimalar(next);
+                  }}
+                  disabled={page >= Math.max(1, Math.ceil(total / 10))}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Keyingi
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </Card>
 
       {/* Modal */}

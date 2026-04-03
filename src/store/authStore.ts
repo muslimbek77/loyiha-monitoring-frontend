@@ -31,6 +31,7 @@ type RegisterPayload = Record<string, unknown>;
 type AuthResponse = {
   user: AuthUser;
   access?: string;
+  refresh?: string;
   token?: string;
 };
 
@@ -49,6 +50,7 @@ export type AuthActionResult = {
 type AuthState = {
   user: AuthUser | null;
   token: string | null;
+  refreshTokenValue: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -56,7 +58,9 @@ type AuthState = {
   register: (userData: RegisterPayload) => Promise<AuthActionResult>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
+  refreshAccessToken: () => Promise<string | null>;
   updateUser: (userData: Partial<AuthUser>) => void;
+  clearSession: (error?: string | null) => void;
   clearError: () => void;
 };
 
@@ -78,13 +82,27 @@ const extractToken = (data: AuthResponse): string => {
   return token;
 };
 
+const extractRefreshToken = (data: AuthResponse): string | null =>
+  data.refresh ?? null;
+
 const normalizeMeResponse = (data: MeResponse): AuthUser =>
   "user" in data ? data.user : data;
 
 const persistAuthToken = (token: string) =>
   localStorage.setItem("auth_token", token);
 
-const clearAuthToken = () => localStorage.removeItem("auth_token");
+const persistRefreshToken = (token: string | null) => {
+  if (token) {
+    localStorage.setItem("refresh_token", token);
+  } else {
+    localStorage.removeItem("refresh_token");
+  }
+};
+
+const clearAuthTokens = () => {
+  localStorage.removeItem("auth_token");
+  localStorage.removeItem("refresh_token");
+};
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -93,6 +111,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       token: null,
+      refreshTokenValue: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -105,11 +124,14 @@ export const useAuthStore = create<AuthState>()(
             credentials,
           );
           const token = extractToken(data);
+          const refreshTokenValue = extractRefreshToken(data);
 
           persistAuthToken(token);
+          persistRefreshToken(refreshTokenValue);
           set({
             user: data.user,
             token,
+            refreshTokenValue,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -130,13 +152,17 @@ export const useAuthStore = create<AuthState>()(
             API_ENDPOINTS.AUTH.REGISTER,
             userData,
           );
-          const token = extractToken(data);
+          const token = data.access ?? data.token ?? null;
+          const refreshTokenValue = extractRefreshToken(data);
 
-          persistAuthToken(token);
+          if (token) persistAuthToken(token);
+          persistRefreshToken(refreshTokenValue);
+
           set({
-            user: data.user,
+            user: token ? data.user : null,
             token,
-            isAuthenticated: true,
+            refreshTokenValue,
+            isAuthenticated: Boolean(token),
             isLoading: false,
             error: null,
           });
@@ -151,20 +177,17 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         set({ isLoading: true });
+        const refreshTokenValue =
+          get().refreshTokenValue ?? localStorage.getItem("refresh_token");
+
         try {
-          await api.post(API_ENDPOINTS.AUTH.LOGOUT);
+          await api.post(API_ENDPOINTS.AUTH.LOGOUT, refreshTokenValue ? {
+            refresh: refreshTokenValue,
+          } : undefined);
         } catch (error) {
-          // Swallow — we clear local state regardless
           console.error("[Auth] Logout endpoint error:", error);
         } finally {
-          clearAuthToken();
-          set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-          });
+          get().clearSession();
         }
       },
 
@@ -185,21 +208,46 @@ export const useAuthStore = create<AuthState>()(
 
           set({ user, token, isAuthenticated: true, isLoading: false });
         } catch (error) {
-          clearAuthToken();
-          set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: getErrorMessage(error, "Failed to fetch user"),
-          });
+          get().clearSession(getErrorMessage(error, "Failed to fetch user"));
         }
+      },
+
+      refreshAccessToken: async () => {
+        const refreshTokenValue =
+          get().refreshTokenValue ?? localStorage.getItem("refresh_token");
+
+        if (!refreshTokenValue) {
+          return null;
+        }
+
+        const { data } = await api.post<{ access: string }>(
+          API_ENDPOINTS.AUTH.REFRESH,
+          {
+            refresh: refreshTokenValue,
+          },
+        );
+
+        persistAuthToken(data.access);
+        set({ token: data.access, isAuthenticated: true });
+        return data.access;
       },
 
       updateUser: (userData) => {
         set((state) => ({
           user: state.user ? { ...state.user, ...userData } : null,
         }));
+      },
+
+      clearSession: (error = null) => {
+        clearAuthTokens();
+        set({
+          user: null,
+          token: null,
+          refreshTokenValue: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error,
+        });
       },
 
       clearError: () => set({ error: null }),
@@ -209,6 +257,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         token: state.token,
+        refreshTokenValue: state.refreshTokenValue,
         isAuthenticated: state.isAuthenticated,
       }),
     },

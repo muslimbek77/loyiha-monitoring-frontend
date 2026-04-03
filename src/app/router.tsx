@@ -1,83 +1,88 @@
-// src/app/router.jsx
-import { createBrowserRouter } from "react-router-dom";
 import { Suspense, lazy } from "react";
+import type { ReactNode } from "react";
+import { createBrowserRouter } from "react-router-dom";
 
-// Layouts
 import AuthLayout from "../shared/components/layout/AuthLayout";
 import DashboardLayout from "../shared/components/layout/DashboardLayout";
-
-// Guards
-import ProtectedRoute from "../shared/components/guards/ProtectedRoute";
-import PublicRoute from "../shared/components/guards/PublicRoute";
 import NotFoundPage from "../pages/NotFoundPage";
-import HujjatlarPage from "@/pages/hujjatlar/HujjatlarPage";
-import HujjatSinglePage from "@/pages/hujjatlar/HujjatSinglePage";
-import BoshqarmaPage from "@/pages/boshqarma/BoshqarmaPage";
-import ObyektPage from "@/pages/obyektlar/ObyektPage";
-import BayonnomalarPage from "@/pages/bayonnomalar/BayonnomalarPage";
-import TopshiriqlarPage from "@/pages/topshiriqlar/TopshiriqlarPage";
-import BayonnomaSinglePage from "@/pages/bayonnomalar/BayonnomaSinglePage";
-import XodimlarPage from "@/pages/xodimlar/XodimlarPage";
-import XodimlarSinglePage from "@/pages/xodimlar/XodimlarSinglePage";
-import BoshqarmaSinglePage from "@/pages/boshqarma/BoshqarmaSinglePage";
-import ChatXonalarPage from "@/pages/chatXonalar/ChatXonalarPage";
-import ChatXonalarSinglePage from "@/pages/chatXonalar/ChatXonalarSinglePage";
-import TopshiriqDetailPage from "@/pages/topshiriqlar/TopshiriqDetailPage";
-import JarimalarPage from "@/pages/jarimalar/JarimalarPage";
-import JarimalarSinglePage from "@/pages/jarimalar/JarimalarSinglePage";
-import Talablar from "@/pages/talablar/TalablarPage";
-import TalablarSinglePage from "@/pages/talablar/TalablarSinglePage";
-import KategoriyalarPage from "@/pages/kategoriyalar/KategoriyalarPage";
-import RoleGuard from "@/shared/components/guards/RoleGuard";
-import UnauthorizedPage from "@/pages/UnauthorizedPage";
-import ObyektEditPage from "@/pages/obyektlar/ObyektEditPage";
-import ObyektDetailPage from "@/pages/obyektlar/ObyektDetailPage";
+import PublicRoute from "../shared/components/guards/PublicRoute";
+import ProtectedRoute from "../shared/components/guards/ProtectedRoute";
+import RoleGuard from "../shared/components/guards/RoleGuard";
+import PageLoader from "@/shared/components/layout/PageLoader";
+import RouteErrorFallback from "@/shared/components/layout/RouteErrorFallback";
 
-// Lazy load pages
 const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("../pages/auth/RegisterPage"));
 const DashboardPage = lazy(() => import("../pages/dashboard/DashboardPage"));
 const ProfilePage = lazy(() => import("../pages/profile/ProfilePage"));
+const HujjatlarPage = lazy(() => import("../pages/hujjatlar/HujjatlarPage"));
+const HujjatSinglePage = lazy(
+  () => import("../pages/hujjatlar/HujjatSinglePage"),
+);
+const BoshqarmaPage = lazy(() => import("../pages/boshqarma/BoshqarmaPage"));
+const BoshqarmaSinglePage = lazy(
+  () => import("../pages/boshqarma/BoshqarmaSinglePage"),
+);
+const ObyektPage = lazy(() => import("../pages/obyektlar/ObyektPage"));
+const ObyektDetailPage = lazy(
+  () => import("../pages/obyektlar/ObyektDetailPage"),
+);
+const ObyektEditPage = lazy(
+  () => import("../pages/obyektlar/ObyektEditPage"),
+);
+const BayonnomalarPage = lazy(
+  () => import("../pages/bayonnomalar/BayonnomalarPage"),
+);
+const BayonnomaSinglePage = lazy(
+  () => import("../pages/bayonnomalar/BayonnomaSinglePage"),
+);
+const TopshiriqlarPage = lazy(
+  () => import("../pages/topshiriqlar/TopshiriqlarPage"),
+);
+const TopshiriqDetailPage = lazy(
+  () => import("../pages/topshiriqlar/TopshiriqDetailPage"),
+);
+const XodimlarPage = lazy(() => import("../pages/xodimlar/XodimlarPage"));
+const XodimlarSinglePage = lazy(
+  () => import("../pages/xodimlar/XodimlarSinglePage"),
+);
+const ChatXonalarPage = lazy(
+  () => import("../pages/chatXonalar/ChatXonalarPage"),
+);
+const ChatXonalarSinglePage = lazy(
+  () => import("../pages/chatXonalar/ChatXonalarSinglePage"),
+);
+const JarimalarPage = lazy(() => import("../pages/jarimalar/JarimalarPage"));
+const JarimalarSinglePage = lazy(
+  () => import("../pages/jarimalar/JarimalarSinglePage"),
+);
+const TalablarPage = lazy(() => import("../pages/talablar/TalablarPage"));
+const TalablarSinglePage = lazy(
+  () => import("../pages/talablar/TalablarSinglePage"),
+);
+const UnauthorizedPage = lazy(() => import("../pages/UnauthorizedPage"));
 
-// Loading component
-const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen">
-    <div className="loading-spinner">Loading...</div>
-  </div>
+const withSuspense = (element: ReactNode) => (
+  <Suspense fallback={<PageLoader />}>{element}</Suspense>
 );
 
 export const router = createBrowserRouter([
-  // Public routes (auth)
   {
     path: "auth",
+    errorElement: <RouteErrorFallback />,
     element: (
       <PublicRoute>
         <AuthLayout />
       </PublicRoute>
     ),
     children: [
-      {
-        path: "login",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <LoginPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "register",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <RegisterPage />
-          </Suspense>
-        ),
-      },
+      { path: "login", element: withSuspense(<LoginPage />) },
+      { path: "register", element: withSuspense(<RegisterPage />) },
     ],
   },
-
-  // Protected routes with DashboardLayout (sidebar, header, footer)
   {
     path: "/",
+    errorElement: <RouteErrorFallback />,
     element: (
       <ProtectedRoute>
         <DashboardLayout />
@@ -88,213 +93,72 @@ export const router = createBrowserRouter([
         index: true,
         element: (
           <RoleGuard action="canManageUsers" redirectTo="/boshqarma">
-            <Suspense fallback={<PageLoader />}>
-              <DashboardPage />
-            </Suspense>
+            {withSuspense(<DashboardPage />)}
           </RoleGuard>
         ),
       },
-      {
-        path: "profile",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ProfilePage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "hujjatlar",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <HujjatlarPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "hujjatlar/:id",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <HujjatSinglePage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "boshqarma",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <BoshqarmaPage />
-          </Suspense>
-        ),
-      },
+      { path: "profile", element: withSuspense(<ProfilePage />) },
+      { path: "hujjatlar", element: withSuspense(<HujjatlarPage />) },
+      { path: "hujjatlar/:id", element: withSuspense(<HujjatSinglePage />) },
+      { path: "boshqarma", element: withSuspense(<BoshqarmaPage />) },
       {
         path: "boshqarma/:id",
         element: (
           <RoleGuard action="canCreate" redirectTo="/unauthorized">
-            <Suspense fallback={<PageLoader />}>
-              <BoshqarmaSinglePage />
-            </Suspense>
+            {withSuspense(<BoshqarmaSinglePage />)}
           </RoleGuard>
         ),
       },
-      {
-        path: "bayonnomalar",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <BayonnomalarPage />
-          </Suspense>
-        ),
-      },
+      { path: "bayonnomalar", element: withSuspense(<BayonnomalarPage />) },
       {
         path: "bayonnomalar/:id",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <BayonnomaSinglePage />
-          </Suspense>
-        ),
+        element: withSuspense(<BayonnomaSinglePage />),
       },
-      {
-        path: "topshiriqlar",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <TopshiriqlarPage />
-          </Suspense>
-        ),
-      },
+      { path: "topshiriqlar", element: withSuspense(<TopshiriqlarPage />) },
       {
         path: "topshiriqlar/:id",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <TopshiriqDetailPage />
-          </Suspense>
-        ),
+        element: withSuspense(<TopshiriqDetailPage />),
       },
-
-      {
-        path: "obyekt",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ObyektPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "obyekt/:id",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ObyektDetailPage />
-          </Suspense>
-        ),
-      },
-
-      {
-        path: "obyekt/:id/edit",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ObyektEditPage />
-          </Suspense>
-        ),
-      },
-
+      { path: "obyekt", element: withSuspense(<ObyektPage />) },
+      { path: "obyekt/:id", element: withSuspense(<ObyektDetailPage />) },
+      { path: "obyekt/:id/edit", element: withSuspense(<ObyektEditPage />) },
       {
         path: "users",
         element: (
           <RoleGuard action="canManageUsers" redirectTo="/unauthorized">
-            <Suspense fallback={<PageLoader />}>
-              <XodimlarPage />
-            </Suspense>
+            {withSuspense(<XodimlarPage />)}
           </RoleGuard>
         ),
       },
-
       {
         path: "users/:id",
         element: (
           <RoleGuard action="canManageUsers" redirectTo="/unauthorized">
-            <Suspense fallback={<PageLoader />}>
-              <XodimlarSinglePage />
-            </Suspense>
+            {withSuspense(<XodimlarSinglePage />)}
           </RoleGuard>
         ),
       },
-
-      {
-        path: "chats",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ChatXonalarPage />
-          </Suspense>
-        ),
-      },
+      { path: "chats", element: withSuspense(<ChatXonalarPage />) },
       {
         path: "chats/:id",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ChatXonalarSinglePage />
-          </Suspense>
-        ),
+        element: withSuspense(<ChatXonalarSinglePage />),
       },
+      { path: "jarimalar", element: withSuspense(<JarimalarPage />) },
       {
-        path: "/jarimalar",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <JarimalarPage />
-          </Suspense>
-        ),
+        path: "jarimalar/:id",
+        element: withSuspense(<JarimalarSinglePage />),
       },
+      { path: "talablar", element: withSuspense(<TalablarPage />) },
       {
-        path: "/jarimalar/:id",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <JarimalarSinglePage />
-          </Suspense>
-        ),
+        path: "talablar/:id",
+        element: withSuspense(<TalablarSinglePage />),
       },
-      {
-        path: "/talablar",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <Talablar />
-          </Suspense>
-        ),
-      },
-      {
-        path: "/talablar/:id",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <TalablarSinglePage />
-          </Suspense>
-        ),
-      },
-
-      {
-        path: "settings",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <div>Settings Page</div>
-          </Suspense>
-        ),
-      },
-      {
-        path: "kategoriyalar",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <KategoriyalarPage />
-          </Suspense>
-        ),
-      },
-
+      { path: "settings", element: withSuspense(<div>Settings Page</div>) },
       {
         path: "unauthorized",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <UnauthorizedPage />
-          </Suspense>
-        ),
+        element: withSuspense(<UnauthorizedPage />),
       },
-      {
-        path: "*",
-        element: <NotFoundPage />,
-      },
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ]);

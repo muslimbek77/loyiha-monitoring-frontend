@@ -1,16 +1,183 @@
-# React + Vite
+# Monitoring Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Ushbu frontend `Vite + React + Ant Design + Tailwind CSS` asosida qurilgan va backenddagi `api/v1` endpointlari bilan ishlaydi. Loyiha monitoring, hujjat aylanishi, bayonnoma, topshiriq, talab, obyekt va boshqarma jarayonlarini yagona interfeysda boshqarish uchun mo'ljallangan.
 
-Currently, two official plugins are available:
+## Ishga tushirish
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. `monitoring` papkaga kiring.
+2. Agar kerak bo'lsa `npm install` bajaring.
+3. `.env` faylda backend manzilini sozlang:
 
-## React Compiler
+```env
+VITE_APP_BASE_URL=http://localhost:8000/api/v1
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+4. Development serverni ishga tushiring:
 
-## Expanding the ESLint configuration
+```bash
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Frontend default holatda `http://localhost:5175` da ishlaydi.
+
+## Build va tekshiruv
+
+```bash
+npm run lint
+npm run build
+```
+
+- `lint` kod sifati va import/xatolarni tekshiradi
+- `build` production bundle holatini ko'rsatadi
+
+## Arxitektura
+
+- `src/services/api/axios.ts`
+  Token yuborish, refresh va global xatolarni boshqaradi.
+- `src/services/api/endpoints.ts`
+  Barcha API route constantlari shu yerda saqlanadi.
+- `src/app/router.tsx`
+  Route-level lazy loading va error fallback shu yerda.
+- `src/shared/components/layout`
+  Global layout, sidebar, header, loader va route error fallback.
+- `src/styles/index.css`
+  Global dizayn tokenlari, shriftlar va Ant Design override'lari.
+
+## API integratsiya qoidasi
+
+Yangi sahifa yoki CRUD yozayotganda to'g'ridan-to'g'ri string URL ishlatmang. Har doim:
+
+1. Endpointni `src/services/api/endpoints.ts` ga qo'shing.
+2. So'rovni `src/services/api/axios.ts` dagi `api` instance orqali yuboring.
+3. Sahifa ichida yuklanish, bo'sh holat va xatolik UI larini ko'rsating.
+4. Role-based action bo'lsa `Can` yoki permission hook orqali tekshiring.
+
+Misol:
+
+```ts
+const response = await api.get(API_ENDPOINTS.TALABLAR.LIST);
+```
+
+## Foydalanuvchi yo'riqnomasi
+
+### 1. Tizimga kirish
+
+- `/auth/login` sahifada username va parol bilan kiring.
+- Token va refresh token avtomatik saqlanadi.
+- Session tugasa `axios` refresh oqimi orqali tokenni yangilashga urinadi.
+
+### 2. Ro'yxatdan o'tish
+
+- `/auth/register` sahifa backenddagi haqiqiy boshqarma ro'yxatini yuklaydi.
+- `PNFL`, `boshqarma`, `lavozim` va boshqa maydonlar backend validation bilan tekshiriladi.
+
+### 3. Asosiy modullar
+
+- `Dashboard`
+  KPI, boshqarma reytingi, AI xulosa va umumiy nazorat ko'rinishi.
+- `Boshqarma`
+  Boshqarmalar kesimida reyting, holat va detail sahifalar.
+- `Obyektlar`
+  Qurilish obyektlari, progress, muddat va muammo holati.
+- `Hujjatlar`
+  Hujjat yuklash, kategoriya asosida filtrlash, tasdiqlash va versiyalar tarixi.
+- `Bayonnomalar`
+  Yig'ilish bayonnomalari, topshiriqlar va ijro nazorati.
+- `Topshiriqlar`
+  Bajarilish jarayoni, kechikishlar va ijrochi bo'limlar kesimi.
+- `Talablar`
+  Boshqarmalararo so'rov yuborish, qabul qilish va bajarish.
+- `Chat xonalar`
+  Ichki muloqot va xabar almashish.
+
+### 4. Hujjat bilan ishlash
+
+1. `Hujjatlar` bo'limida filterlardan foydalaning.
+2. `Yangi Hujjat` orqali obyekt, boshqarma va kategoriya tanlang.
+3. Detail sahifada:
+   - faylni yuklab olish
+   - holatini ko'rish
+   - versiyalar tarixini tekshirish
+   - ruxsat bo'lsa tahrirlash yoki tasdiqlash
+
+### 5. Bayonnoma va topshiriq bilan ishlash
+
+1. `Bayonnomalar` sahifasida qidiruv va tartiblashdan foydalaning.
+2. Bayonnoma detail ichida topshiriqlar va izohlar ko'rinadi.
+3. `Topshiriqlar` bo'limida kechikkan va bajarilgan vazifalar alohida ajraladi.
+
+### 6. Talablar bilan ishlash
+
+1. `Talablar` sahifasida kelgan va yuborilgan talablar ajratilgan.
+2. Ruxsat bo'lsa:
+   - qabul qilish
+   - rad etish
+   - bajarildi deb belgilash
+3. Har bir action to'g'ridan-to'g'ri backend action endpointiga ulanadi.
+
+## Admin va rahbar use-case'lari
+
+### Rais / rahbar
+
+- dashboardda umumiy KPI va AI xulosani ko'radi
+- boshqarma reytinglarini tahlil qiladi
+- hujjatlar, talablar va topshiriqlardagi muammoli nuqtalarni kuzatadi
+- AI hisobotni yaratish yoki yangilash imkoniga ega bo'lishi mumkin
+
+### Boshqarma boshlig'i
+
+- o'z boshqarmasiga tegishli hujjatlar va topshiriqlarni nazorat qiladi
+- hujjatlarni tasdiqlaydi yoki rad etadi
+- talab va topshiriqlar ijrosini tekshiradi
+
+### Operator / ijrochi
+
+- topshiriqlarni ko'radi
+- izoh va biriktirma yuklaydi
+- talab/hujjat detail sahifalarida holatni kuzatadi
+
+### Admin / texnik foydalanuvchi
+
+- foydalanuvchi va boshqarma konfiguratsiyasini kuzatadi
+- endpoint o'zgarishida `API_ENDPOINTS` ni yangilaydi
+- `lint` va `build` bilan release oldidan tekshiradi
+
+## Xatolik holatlari
+
+- route xatolari uchun maxsus fallback sahifa bor
+- runtime xatolar `ErrorBoundary` orqali ushlanadi
+- network yoki permission xatosi bo'lsa sahifalarda xabar/fallback ko'rsatiladi
+
+## Optimallashtirish holati
+
+So'nggi optimizatsiya ishlari:
+
+- route-level lazy loading yoqilgan
+- og'ir `Table`-ga bog'liq sahifalarning katta qismi custom/native tablega o'tkazilgan
+- ko'p joydagi `DatePicker` native `input type="date"` ga almashtirilgan
+- build uchun ehtiyotkor `manualChunks` qo'shilgan:
+  - `react-vendor`
+  - `router-vendor`
+  - `antd-vendor`
+  - `data-vendor`
+
+Bu yondashuv katta shared chunkni mantiqan bo'lib, browser caching'ni yaxshilaydi.
+
+## AntD audit xulosasi
+
+Hozir Ant Design asosan quyidagi joylarda qoldirilgan:
+
+- global `ConfigProvider` va `App` wrapper
+- modal, form, select, input kabi tez yetkaziladigan form qismlari
+- ayrim detail sahifalardagi card/badge/spin komponentlar
+
+Eng og'ir `Table`-ga bog'liq list sahifalarning ko'pchiligi allaqachon yengillashtirilgan. Keyingi bosqich kerak bo'lsa form-heavy sahifalarni ham bosqichma-bosqich custom komponentlarga o'tkazish mumkin.
+
+## Tavsiya etilgan ish jarayoni
+
+1. Endpointni backendda tekshiring.
+2. Uni `API_ENDPOINTS` ga qo'shing.
+3. Sahifa yoki modalni shared style classlari bilan yozing:
+   `page-surface`, `page-header`, `section-card`.
+4. Yangi UI yozilganda avval native/light komponentni ko'rib chiqing.
+5. `npm run lint` va `npm run build` bilan tekshirib boring.

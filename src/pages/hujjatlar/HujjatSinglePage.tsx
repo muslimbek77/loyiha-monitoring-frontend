@@ -6,7 +6,6 @@ import {
   Form,
   Input,
   Select,
-  DatePicker,
   Upload,
   message,
 } from "antd";
@@ -23,6 +22,8 @@ import type { UploadFile } from "antd/es/upload/interface";
 import dayjs from "dayjs";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { usePermissions } from "@/features/auth/hooks/usePermissions";
 
 interface Hujjat {
   id: number;
@@ -52,6 +53,25 @@ interface Hujjat {
 interface Obyekt {
   id: number;
   nomi: string;
+}
+
+interface BoshqarmaOption {
+  id: number;
+  nomi: string;
+}
+
+interface KategoriyaOption {
+  id: number;
+  nomi: string;
+  children?: KategoriyaOption[];
+}
+
+interface HujjatTarixItem {
+  id: number;
+  versiya: number;
+  yuklovchi_fio: string;
+  izoh: string;
+  created_at: string;
 }
 
 const holatConfig: Record<string, { bg: string; text: string; dot: string }> = {
@@ -110,6 +130,8 @@ const SectionDivider = ({ title }: { title?: string }) => (
 const HujjatSinglePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { can } = usePermissions();
   const [data, setData] = useState<Hujjat | null>(null);
   const [loading, setLoading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -117,9 +139,12 @@ const HujjatSinglePage = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [obyektlar, setObyektlar] = useState<Obyekt[]>([]);
-  const [kategoriyalar, setKategoriyalar] = useState([]);
+  const [kategoriyalar, setKategoriyalar] = useState<KategoriyaOption[]>([]);
   const [obyektlarLoading, setObyektlarLoading] = useState(false);
-  const [boshqarmalar, setBoshqarmalar] = useState([]);
+  const [boshqarmalar, setBoshqarmalar] = useState<BoshqarmaOption[]>([]);
+  const [tarix, setTarix] = useState<HujjatTarixItem[]>([]);
+  const [tarixLoading, setTarixLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const [form] = Form.useForm();
@@ -127,7 +152,7 @@ const HujjatSinglePage = () => {
   const fetchSingle = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`${API_ENDPOINTS.HUJJATLAR.LIST}${id}/`);
+      const response = await api.get(API_ENDPOINTS.HUJJATLAR.DETAIL(id!));
       setData(response.data);
     } catch (error) {
       console.error(error);
@@ -148,12 +173,25 @@ const HujjatSinglePage = () => {
     }
   };
 
-  const getKategoriyalar = async () => {
+  const flattenKategoriyaTree = (
+    nodes: KategoriyaOption[],
+    prefix = "",
+  ): KategoriyaOption[] =>
+    nodes.flatMap((node) => {
+      const label = prefix ? `${prefix} / ${node.nomi}` : node.nomi;
+      const current = { ...node, nomi: label };
+      return [current, ...flattenKategoriyaTree(node.children ?? [], label)];
+    });
+
+  const getKategoriyalar = async (boshqarmaId?: number) => {
     try {
-      const response = await api.get(
-        `/hujjatlar/kategoriyalar/${data?.kategoriya}`,
-      );
-      setKategoriyalar(response.data?.results ?? response.data);
+      const response = await api.get(API_ENDPOINTS.KATEGORIYALAR.BOSHQARMA, {
+        params: {
+          boshqarma: boshqarmaId ?? data?.boshqarma,
+        },
+      });
+      const items = response.data?.results ?? response.data;
+      setKategoriyalar(flattenKategoriyaTree(Array.isArray(items) ? items : []));
     } catch (error) {
       console.error(error);
     }
@@ -161,15 +199,30 @@ const HujjatSinglePage = () => {
 
   const getBoshqarmalar = async () => {
     try {
-      const response = await api.get(API_ENDPOINTS.BOSHQARMA.LIST);
+      const response = await api.get(API_ENDPOINTS.BOSHQARMA.LIST_ALL);
       setBoshqarmalar(response.data?.results ?? response.data);
     } catch (error) {
       console.error(error);
     }
   };
 
+  const fetchTarix = async () => {
+    try {
+      setTarixLoading(true);
+      const response = await api.get(API_ENDPOINTS.HUJJATLAR.TARIX(id!));
+      setTarix(response.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setTarixLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (id) fetchSingle();
+    if (id) {
+      fetchSingle();
+      fetchTarix();
+    }
   }, [id]);
 
   const handleEditOpen = () => {
@@ -180,13 +233,13 @@ const HujjatSinglePage = () => {
       kategoriya: data.kategoriya,
       boshqarma: data.boshqarma,
       holat: data.holat,
-      muddat: dayjs(data.muddat),
+      muddat: data.muddat || "",
       rad_sababi: data.rad_sababi || "",
       izoh: data.izoh || "",
     });
     setFileList([]);
     fetchObyektlar();
-    getKategoriyalar();
+    getKategoriyalar(data.boshqarma);
     getBoshqarmalar();
     setEditOpen(true);
   };
@@ -195,24 +248,37 @@ const HujjatSinglePage = () => {
     try {
       const values = await form.validateFields();
       setEditLoading(true);
-      const formData = new FormData();
-      formData.append("nomi", values.nomi);
-      formData.append("obyekt", values.obyekt);
-      formData.append("kategoriya", values.kategoriya);
-      formData.append("boshqarma", values.boshqarma);
-      formData.append("holat", values.holat);
-      formData.append("muddat", values.muddat.format("YYYY-MM-DD"));
-      formData.append("rad_sababi", values.rad_sababi || "");
-      formData.append("izoh", values.izoh || "");
+      const payload = {
+        nomi: values.nomi,
+        obyekt: values.obyekt,
+        kategoriya: values.kategoriya,
+        boshqarma: values.boshqarma,
+        holat: values.holat,
+        muddat: values.muddat || "",
+        rad_sababi: values.rad_sababi || "",
+        izoh: values.izoh || "",
+      };
+
+      await api.patch(API_ENDPOINTS.HUJJATLAR.DETAIL(id!), payload);
+
       if (fileList.length > 0 && fileList[0].originFileObj) {
-        formData.append("fayl", fileList[0].originFileObj);
+        const versionData = new FormData();
+        versionData.append("fayl", fileList[0].originFileObj);
+        versionData.append("izoh", values.izoh || "");
+
+        await api.post(API_ENDPOINTS.HUJJATLAR.YANGILASH(id!), versionData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       }
-      await api.patch(`${API_ENDPOINTS.HUJJATLAR.LIST}${id}/`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      message.success("Hujjat muvaffaqiyatli yangilandi");
+
+      message.success(
+        fileList.length > 0
+          ? "Hujjat yangi versiya bilan yangilandi"
+          : "Hujjat muvaffaqiyatli yangilandi",
+      );
       setEditOpen(false);
       fetchSingle();
+      fetchTarix();
     } catch (error) {
       console.error(error);
       message.error("Xatolik yuz berdi");
@@ -231,7 +297,7 @@ const HujjatSinglePage = () => {
       onOk: async () => {
         try {
           setDeleteLoading(true);
-          await api.delete(`${API_ENDPOINTS.HUJJATLAR.LIST}${id}/`);
+          await api.delete(API_ENDPOINTS.HUJJATLAR.DETAIL(id!));
           message.success("Hujjat o'chirildi");
           navigate(-1);
         } catch (error) {
@@ -255,6 +321,26 @@ const HujjatSinglePage = () => {
     }
   };
 
+  const handleTasdiqlash = async (holat: "tasdiqlandi" | "rad_etildi") => {
+    try {
+      setActionLoading(true);
+      await api.post(API_ENDPOINTS.HUJJATLAR.TASDIQLASH(id!), {
+        holat,
+        rad_sababi:
+          holat === "rad_etildi" ? "Frontend orqali rad etildi" : undefined,
+      });
+      message.success(
+        holat === "tasdiqlandi" ? "Hujjat tasdiqlandi" : "Hujjat rad etildi",
+      );
+      fetchSingle();
+    } catch (error) {
+      console.error(error);
+      message.error("Amalni bajarishda xatolik yuz berdi");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading || !data) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-50">
@@ -262,6 +348,16 @@ const HujjatSinglePage = () => {
       </div>
     );
   }
+
+  const reviewSummary = [
+    data.is_kechikkan ? "Muddat o'tgan, nazorat talab etiladi." : "Muddat doirasida.",
+    data.holat === "kutilmoqda"
+      ? "Tasdiqlash jarayoni kutilyapti."
+      : `Holati: ${data.holat_display}.`,
+    data.versiya > 1
+      ? `${data.versiya} ta versiya yuritilgan.`
+      : "Bu birinchi versiya.",
+  ].join(" ");
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
@@ -285,22 +381,26 @@ const HujjatSinglePage = () => {
           <div className="flex items-center gap-2 mt-1">
             <HolatBadge holat={data.holat} label={data.holat_display} />
 
-            <button
-              onClick={handleEditOpen}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 cursor-pointer hover:text-slate-800 text-xs font-medium rounded-xl shadow-sm transition-all duration-150"
-            >
-              <EditOutlined className="text-[11px]" />
-              Tahrirlash
-            </button>
+            {can("canUpdate") && (
+              <button
+                onClick={handleEditOpen}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 cursor-pointer hover:text-slate-800 text-xs font-medium rounded-xl shadow-sm transition-all duration-150"
+              >
+                <EditOutlined className="text-[11px]" />
+                Tahrirlash
+              </button>
+            )}
 
-            <button
-              onClick={handleDelete}
-              disabled={deleteLoading}
-              className="inline-flex items-center gap-1.5 px-3.5 cursor-pointer py-2 bg-white border border-rose-200 hover:border-rose-300 text-rose-500 hover:text-rose-600 text-xs font-medium rounded-xl shadow-sm transition-all duration-150 disabled:opacity-50"
-            >
-              <DeleteOutlined className="text-[11px]" />
-              O'chirish
-            </button>
+            {can("canDelete") && (
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="inline-flex items-center gap-1.5 px-3.5 cursor-pointer py-2 bg-white border border-rose-200 hover:border-rose-300 text-rose-500 hover:text-rose-600 text-xs font-medium rounded-xl shadow-sm transition-all duration-150 disabled:opacity-50"
+              >
+                <DeleteOutlined className="text-[11px]" />
+                O'chirish
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -331,6 +431,32 @@ const HujjatSinglePage = () => {
           </DetailRow>
         </div>
 
+        <SectionDivider title="Operativ xulosa" />
+        <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+            Hujjat holati bo'yicha tezkor xulosa
+          </p>
+          <p className="mt-2 text-sm leading-7 text-slate-700">{reviewSummary}</p>
+          {data.holat === "kutilmoqda" && user?.lavozim === "boshqarma_boshi" ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={() => handleTasdiqlash("tasdiqlandi")}
+                disabled={actionLoading}
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+              >
+                Tasdiqlash
+              </button>
+              <button
+                onClick={() => handleTasdiqlash("rad_etildi")}
+                disabled={actionLoading}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-500 disabled:opacity-50"
+              >
+                Rad etish
+              </button>
+            </div>
+          ) : null}
+        </div>
+
         {/* File section */}
         <SectionDivider title="Fayl" />
         <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5">
@@ -352,9 +478,11 @@ const HujjatSinglePage = () => {
             <button
               onClick={async () => {
                 try {
-                  const url = data.fayl!.replace("http://", "https://");
-                  const response = await fetch(url);
-                  const blob = await response.blob();
+                  const url = data.fayl!.replace(/^http:/, "https:");
+                  const response = await api.get(url, {
+                    responseType: "blob",
+                  });
+                  const blob = response.data as Blob;
                   const blobUrl = URL.createObjectURL(blob);
                   const a = document.createElement("a");
                   a.href = blobUrl;
@@ -395,6 +523,38 @@ const HujjatSinglePage = () => {
               </p>
             </div>
           </>
+        )}
+
+        <SectionDivider title="Versiyalar tarixi" />
+        {tarixLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Spin size="small" />
+          </div>
+        ) : tarix.length ? (
+          <div className="space-y-3">
+            {tarix.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 px-4 py-3"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    v{item.versiya} • {item.yuklovchi_fio}
+                  </p>
+                  <p className="mt-1 text-xs leading-6 text-slate-500">
+                    {item.izoh || "Izoh kiritilmagan"}
+                  </p>
+                </div>
+                <span className="text-xs text-slate-400">
+                  {dayjs(item.created_at).format("DD.MM.YYYY HH:mm")}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500">
+            Hujjat versiyalari tarixi hali mavjud emas.
+          </div>
         )}
 
         {/* Footer timestamp */}
@@ -456,10 +616,7 @@ const HujjatSinglePage = () => {
                 placeholder="Kategoriyani tanlang"
                 optionFilterProp="label"
                 className="rounded-lg"
-                options={(Array.isArray(kategoriyalar)
-                  ? kategoriyalar
-                  : [kategoriyalar]
-                ).map((k: any) => ({
+                options={kategoriyalar.map((k) => ({
                   value: k.id,
                   label: k.nomi,
                 }))}
@@ -481,10 +638,11 @@ const HujjatSinglePage = () => {
                 placeholder="Boshqarmani tanlang"
                 optionFilterProp="label"
                 className="rounded-lg"
-                options={(Array.isArray(boshqarmalar)
-                  ? boshqarmalar
-                  : [boshqarmalar]
-                ).map((b: any) => ({
+                onChange={(value) => {
+                  form.setFieldValue("kategoriya", undefined);
+                  getKategoriyalar(value);
+                }}
+                options={boshqarmalar.map((b) => ({
                   value: b.id,
                   label: b.nomi,
                 }))}
@@ -541,7 +699,10 @@ const HujjatSinglePage = () => {
               }
               rules={[{ required: true, message: "Muddatni kiriting" }]}
             >
-              <DatePicker className="w-full rounded-lg" format="YYYY-MM-DD" />
+              <input
+                type="date"
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700 outline-none transition hover:border-slate-300 focus:border-slate-500"
+              />
             </Form.Item>
           </div>
 

@@ -4,7 +4,6 @@ import {
   Modal,
   Form,
   Input,
-  DatePicker,
   InputNumber,
   Select,
   message,
@@ -19,7 +18,6 @@ import {
   FilterOutlined,
   SortAscendingOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate } from "react-router-dom";
@@ -176,7 +174,7 @@ const ObyektPage = () => {
       try {
         setLoading(true);
         const params = buildQueryParams(f);
-        const response = await api.get("/obyektlar/", {
+        const response = await api.get(API_ENDPOINTS.OBYEKTLAR.LIST, {
           params,
         });
         setData(response.data.results);
@@ -238,15 +236,9 @@ const ObyektPage = () => {
       formData.append("holat", values.holat);
       formData.append("reja_foizi", values.reja_foizi);
       formData.append("bajarilish_foizi", values.bajarilish_foizi);
-      formData.append(
-        "boshlanish_sanasi",
-        values.boshlanish_sanasi.format("YYYY-MM-DD"),
-      );
+      formData.append("boshlanish_sanasi", values.boshlanish_sanasi || "");
       if (values.tugash_sanasi) {
-        formData.append(
-          "tugash_sanasi",
-          values.tugash_sanasi.format("YYYY-MM-DD"),
-        );
+        formData.append("tugash_sanasi", values.tugash_sanasi);
       }
       formData.append("shartnoma_summasi", values.shartnoma_summasi.toString());
       formData.append("sarflangan_summa", values.sarflangan_summa.toString());
@@ -436,7 +428,14 @@ const ObyektPage = () => {
                       <td className="px-4 py-3.5 text-center">
                         <span className="text-sm text-center text-slate-600 tabular-nums">
                           {row.tugash_sanasi
-                            ? dayjs(row.tugash_sanasi).format("DD.MM.YY")
+                            ? new Date(row.tugash_sanasi).toLocaleDateString(
+                                "uz-UZ",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "2-digit",
+                                },
+                              )
                             : "-"}
                         </span>
                       </td>
@@ -592,7 +591,10 @@ const ObyektPage = () => {
               name="boshlanish_sanasi"
               rules={[{ required: true, message: "Sanani tanlang" }]}
             >
-              <DatePicker className="w-full rounded-lg" format="DD.MM.YYYY" />
+              <input
+                type="date"
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700 outline-none transition hover:border-slate-300 focus:border-slate-500"
+              />
             </Form.Item>
 
             <Form.Item
@@ -600,7 +602,10 @@ const ObyektPage = () => {
               name="tugash_sanasi"
               // rules={[{ required: true, message: "Sanani tanlang" }]}
             >
-              <DatePicker className="w-full rounded-lg" format="DD.MM.YYYY" />
+              <input
+                type="date"
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700 outline-none transition hover:border-slate-300 focus:border-slate-500"
+              />
             </Form.Item>
 
             <Form.Item

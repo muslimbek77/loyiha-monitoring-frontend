@@ -13,12 +13,32 @@ interface QueueItem {
   reject: (error: unknown) => void;
 }
 
-// ─── Instance ─────────────────────────────────────────────────────────────────
+const AUTH_ENDPOINTS = [
+  "/auth/login/",
+  "/auth/logout/",
+  "/auth/register/",
+  "/auth/token/refresh/",
+];
+
+const normalizeBaseUrl = (url: string) => url.replace(/\/+$/, "");
+
+const normalizeRelativeUrl = (url?: string) => {
+  if (!url || /^https?:\/\//i.test(url)) return url;
+
+  const [path, query] = url.split("?");
+  const normalizedPath = `/${path}`.replace(/\/{2,}/g, "/");
+
+  return query === undefined ? normalizedPath : `${normalizedPath}?${query}`;
+};
+
+const isAuthEndpoint = (url?: string) =>
+  AUTH_ENDPOINTS.some((endpoint) => normalizeRelativeUrl(url)?.startsWith(endpoint));
 
 const api = axios.create({
-  baseURL:
+  baseURL: normalizeBaseUrl(
     import.meta.env.VITE_APP_BASE_URL ??
-    "https://loyiha.kuprikqurilish.uz/api/v1",
+      "https://loyiha.kuprikqurilish.uz/api/v1",
+  ),
   timeout: 10_000,
   headers: { "Content-Type": "application/json" },
 });
@@ -39,6 +59,8 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    config.url = normalizeRelativeUrl(config.url);
+
     const token =
       useAuthStore.getState().token ?? localStorage.getItem("auth_token");
 
@@ -59,55 +81,56 @@ api.interceptors.response.use(
     const originalRequest = error.config as AxiosRequestConfig & {
       _retry?: boolean;
     };
+    const { refreshAccessToken, clearSession } = useAuthStore.getState();
 
-    // ── 401 handling ──────────────────────────────────────────────────────────
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      const { refreshToken, logout } = useAuthStore.getState();
-
-      // If a refresh endpoint exists, attempt token refresh
-      if (refreshToken) {
-        if (isRefreshing) {
-          // Queue requests that arrive while refresh is in-flight
-          return new Promise<string>((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          })
-            .then((token) => {
-              originalRequest.headers = {
-                ...originalRequest.headers,
-                Authorization: `Bearer ${token}`,
-              };
-              return api(originalRequest);
-            })
-            .catch(Promise.reject.bind(Promise));
-        }
-
-        originalRequest._retry = true;
-        isRefreshing = true;
-
-        try {
-          const newToken = await refreshToken(); // implement in authStore
-          processQueue(null, newToken);
-          originalRequest.headers = {
-            ...originalRequest.headers,
-            Authorization: `Bearer ${newToken}`,
-          };
-          return api(originalRequest);
-        } catch (refreshError) {
-          processQueue(refreshError, null);
-          void logout();
-          redirectToLogin();
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
-        }
-      }
-
-      // No refresh token — log out immediately
-      void logout();
-      redirectToLogin();
+    if (!originalRequest) {
+      return Promise.reject(error);
     }
 
-    // ── Other error status codes ──────────────────────────────────────────────
+    if (error.response?.status === 401) {
+      if (originalRequest._retry || isAuthEndpoint(originalRequest.url)) {
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers = {
+              ...originalRequest.headers,
+              Authorization: `Bearer ${token}`,
+            };
+            return api(originalRequest);
+          })
+          .catch(Promise.reject.bind(Promise));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const newToken = await refreshAccessToken();
+        if (!newToken) {
+          throw new Error("Access token refresh failed");
+        }
+
+        processQueue(null, newToken);
+        originalRequest.headers = {
+          ...originalRequest.headers,
+          Authorization: `Bearer ${newToken}`,
+        };
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        clearSession();
+        redirectToLogin();
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
     if (error.response?.status === 403) {
       console.warn("[API] Forbidden — insufficient permissions.");
     }
@@ -119,8 +142,6 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function redirectToLogin() {
   if (window.location.pathname !== "/auth/login") {

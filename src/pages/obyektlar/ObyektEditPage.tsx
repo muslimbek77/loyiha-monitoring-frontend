@@ -165,8 +165,8 @@ const ObyektEditPage = () => {
       try {
         setLoading(true);
         const [obyektRes, xodimRes] = await Promise.all([
-          api.get(`${API_ENDPOINTS.OBYEKTLAR.LIST}${id}/`),
-          api.get("/auth/users/").catch(() => ({ data: [] })), // graceful fallback
+          api.get(API_ENDPOINTS.OBYEKTLAR.DETAIL(id!)),
+          api.get(API_ENDPOINTS.USERS.LIST).catch(() => ({ data: [] })), // graceful fallback
         ]);
         const d = obyektRes.data;
         setForm({
@@ -251,7 +251,7 @@ const ObyektEditPage = () => {
         formData.append("rasm", rasmFile, rasmFile.name);
       }
       // If no new file chosen, omit "rasm" entirely so the server keeps the existing one
-      await api.put(`${API_ENDPOINTS.OBYEKTLAR.LIST}${id}/`, formData, {
+      await api.put(API_ENDPOINTS.OBYEKTLAR.DETAIL(id!), formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       message.success("Obyekt muvaffaqiyatli yangilandi");
@@ -269,7 +269,7 @@ const ObyektEditPage = () => {
 
   const handleDelete = async () => {
     try {
-      await api.delete(`${API_ENDPOINTS.OBYEKTLAR.LIST}${id}/`);
+      await api.delete(API_ENDPOINTS.OBYEKTLAR.DETAIL(id!));
       message.success("Obyekt muvaffaqiyatli o'chirildi");
       navigate("/obyekt");
     } catch (err: any) {

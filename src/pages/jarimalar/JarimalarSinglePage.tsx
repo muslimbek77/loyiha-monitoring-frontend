@@ -77,7 +77,7 @@ const JarimalarSinglePage = () => {
 
   const fetchJarima = async () => {
     try {
-      const res = await api.get(`${API_ENDPOINTS.JARIMALAR.LIST}${id}`);
+      const res = await api.get(API_ENDPOINTS.JARIMALAR.DETAIL(id!));
       setData(res.data);
     } finally {
       setLoading(false);

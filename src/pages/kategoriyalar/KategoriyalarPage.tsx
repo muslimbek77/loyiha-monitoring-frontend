@@ -1,6 +1,7 @@
 "use client";
 
 import api from "@/services/api/axios";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useState, useEffect } from "react";
 import {
   Button,
@@ -24,6 +25,7 @@ import {
   EditOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -53,6 +55,15 @@ interface Boshqarma {
 interface Obyekt {
   id: number;
   nomi: string;
+}
+
+interface HujjatListItem {
+  id: number;
+  nomi: string;
+  obyekt_nomi: string;
+  boshqarma_nomi: string;
+  holat_display: string;
+  fayl_turi: string;
 }
 
 // ─── Tree Row ─────────────────────────────────────────────────────────────────
@@ -202,7 +213,7 @@ function AddModal({
       };
       if (values.parent) payload.parent = Number(values.parent);
 
-      await api.post("hujjatlar/kategoriyalar/", payload);
+      await api.post(API_ENDPOINTS.KATEGORIYALAR.LIST, payload);
 
       form.resetFields();
       onSaved();
@@ -422,7 +433,7 @@ function EditModal({
         parent: values.parent ? Number(values.parent) : null,
       };
 
-      await api.patch(`hujjatlar/kategoriyalar/${kategoriyaId}/`, payload);
+      await api.patch(API_ENDPOINTS.KATEGORIYALAR.DETAIL(kategoriyaId), payload);
 
       onSaved();
       onClose();
@@ -576,12 +587,15 @@ function EditModal({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const KategoriyalarPage = () => {
+  const navigate = useNavigate();
   const [kategoriyalar, setKategoriyalar] = useState<Kategoriya[]>([]);
   const [boshqarmalar, setBoshqarmalar] = useState<Boshqarma[]>([]);
   const [obyektlar, setObyektlar] = useState<Obyekt[]>([]);
   const [selected, setSelected] = useState<Kategoriya | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<Kategoriya | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [relatedDocs, setRelatedDocs] = useState<HujjatListItem[]>([]);
+  const [relatedDocsLoading, setRelatedDocsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -590,9 +604,7 @@ const KategoriyalarPage = () => {
 
   const fetchKategoriyalar = async () => {
     try {
-      const { data } = await api.get(
-        "hujjatlar/kategoriyalar/boshqarma_kategoriyalari/",
-      );
+      const { data } = await api.get(API_ENDPOINTS.KATEGORIYALAR.BOSHQARMA);
       setKategoriyalar(Array.isArray(data) ? data : (data.results ?? []));
       setFetchError("");
     } catch (e) {
@@ -602,7 +614,7 @@ const KategoriyalarPage = () => {
 
   const fetchBoshqarmalar = async () => {
     try {
-      const { data } = await api.get("core/boshqarmalar/");
+      const { data } = await api.get(API_ENDPOINTS.BOSHQARMA.LIST);
       setBoshqarmalar(Array.isArray(data) ? data : (data.results ?? []));
     } catch {
       /* silent */
@@ -611,7 +623,7 @@ const KategoriyalarPage = () => {
 
   const fetchObyektlar = async () => {
     try {
-      const { data } = await api.get("obyektlar/");
+      const { data } = await api.get(API_ENDPOINTS.OBYEKTLAR.LIST);
       setObyektlar(Array.isArray(data) ? data : (data.results ?? []));
     } catch {
       /* silent */
@@ -635,10 +647,31 @@ const KategoriyalarPage = () => {
     }
     setDetailLoading(true);
     api
-      .get(`hujjatlar/kategoriyalar/${selected.id}/`)
+      .get(API_ENDPOINTS.KATEGORIYALAR.DETAIL(selected.id))
       .then(({ data }: { data: Kategoriya }) => setSelectedDetail(data))
       .catch(() => setSelectedDetail(selected)) // fallback to tree data
       .finally(() => setDetailLoading(false));
+  }, [selected?.id]);
+
+  useEffect(() => {
+    if (!selected) {
+      setRelatedDocs([]);
+      return;
+    }
+
+    setRelatedDocsLoading(true);
+    api
+      .get(API_ENDPOINTS.HUJJATLAR.KATEGORIYA_HUJJATLARI, {
+        params: {
+          kategoriya: selected.id,
+          ...(selected.boshqarma ? { boshqarma: selected.boshqarma } : {}),
+        },
+      })
+      .then(({ data }) => {
+        setRelatedDocs(Array.isArray(data) ? data : (data.results ?? []));
+      })
+      .catch(() => setRelatedDocs([]))
+      .finally(() => setRelatedDocsLoading(false));
   }, [selected?.id]);
 
   const filtered = search.trim()
@@ -835,6 +868,43 @@ const KategoriyalarPage = () => {
                     </Text>
                   </div>
                 )}
+
+                <div className="bg-white rounded-xl p-4 border border-slate-200 mb-4">
+                  <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-3">
+                    Shu kategoriya bo'yicha hujjatlar
+                  </Text>
+                  {relatedDocsLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Spin size="small" />
+                    </div>
+                  ) : relatedDocs.length === 0 ? (
+                    <Text className="text-sm text-slate-400">
+                      Hujjatlar topilmadi.
+                    </Text>
+                  ) : (
+                    <div className="space-y-2">
+                      {relatedDocs.slice(0, 6).map((doc) => (
+                        <button
+                          key={doc.id}
+                          onClick={() => navigate(`/hujjatlar/${doc.id}`)}
+                          className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3 text-left transition-all hover:border-indigo-300 hover:bg-slate-50"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-700">
+                              {doc.nomi}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-400">
+                              {doc.obyekt_nomi} • {doc.boshqarma_nomi} • {doc.fayl_turi}
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                            {doc.holat_display}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Children */}
                 {(selectedDetail.children?.length ?? 0) > 0 && (

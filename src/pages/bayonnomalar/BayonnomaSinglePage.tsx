@@ -3,16 +3,7 @@ import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Tag,
-  Progress,
-  Typography,
   Spin,
-  Tooltip,
-  Badge,
-  Avatar,
-  Divider,
-  Timeline,
-  Empty,
 } from "antd";
 import {
   FileTextOutlined,
@@ -42,8 +33,6 @@ import {
 import BayonnomaEditModal from "./BayonnomaEditModal";
 import TopshiriqQoshishModal from "./TopshiriqQushishModal";
 import Can from "@/shared/components/guards/Can";
-
-const { Title, Text } = Typography;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,7 +103,7 @@ const BayonnomaSinglePage = () => {
       setLoading(true);
       try {
         const res = await api.get<BayonnomaSingle>(
-          `${API_ENDPOINTS.BAYONNOMALAR.LIST}${id}/`,
+          API_ENDPOINTS.BAYONNOMALAR.DETAIL(id!),
         );
         setData(res.data);
       } finally {
@@ -135,7 +124,9 @@ const BayonnomaSinglePage = () => {
   if (!data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Empty description="Bayonnoma topilmadi" />
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center text-slate-400 shadow-sm">
+          Bayonnoma topilmadi
+        </div>
       </div>
     );
   }
@@ -156,12 +147,9 @@ const BayonnomaSinglePage = () => {
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <span>Bayonnomalar</span>
           <span>/</span>
-          <Tag
-            color="blue"
-            className="rounded-full! px-2.5! py-0.5! text-xs! font-bold! font-mono! m-0!"
-          >
+          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-600">
             {data.raqami}
-          </Tag>
+          </span>
         </div>
 
         <Can action="canCreate">
@@ -189,24 +177,20 @@ const BayonnomaSinglePage = () => {
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
-                <Tag
-                  color="blue"
-                  className="rounded-full! px-3! py-0.5! text-sm! font-bold! font-mono!"
-                >
+                <span className="rounded-full bg-blue-50 px-3 py-0.5 text-sm font-bold text-blue-600">
                   {data.raqami}
-                </Tag>
+                </span>
                 <span className="text-xs text-slate-400">
                   <CalendarOutlined className="mr-1" />
                   {formatDate(data.sana)}
                 </span>
               </div>
-              <Title
-                level={3}
-                className="mb-1! font-extrabold! text-slate-900! leading-snug!"
+              <h1
+                className="mb-1 text-3xl font-extrabold leading-snug text-slate-900"
                 style={{ fontFamily: "'Georgia', serif" }}
               >
                 {data.mavzu}
-              </Title>
+              </h1>
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">
                   {data.yaratuvchi_fio ? (
@@ -215,34 +199,31 @@ const BayonnomaSinglePage = () => {
                     <UserOutlined />
                   )}
                 </div>
-                <Text className="text-sm! text-slate-500!">
+                <p className="text-sm text-slate-500">
                   Yaratuvchi:{" "}
                   <strong className="text-slate-700">
                     {data.yaratuvchi_fio}
                   </strong>
-                </Text>
+                </p>
               </div>
             </div>
 
             {/* Progress ring area */}
             <div className="flex flex-col items-center gap-1 shrink-0">
-              <div className="relative flex h-24 w-24 items-center justify-center">
-                <Progress
-                  type="circle"
-                  percent={data.bajarilish_foizi}
-                  strokeColor={progressColor}
-                  trailColor="#f1f5f9"
-                  strokeWidth={8}
-                  size={96}
-                  format={(p) => (
-                    <span
-                      className="text-base font-black"
-                      style={{ color: progressColor }}
-                    >
-                      {p}%
-                    </span>
-                  )}
-                />
+              <div
+                className="relative flex h-24 w-24 items-center justify-center rounded-full"
+                style={{
+                  background: `conic-gradient(${progressColor} ${data.bajarilish_foizi}%, #e2e8f0 ${data.bajarilish_foizi}% 100%)`,
+                }}
+              >
+                <div className="flex h-[78px] w-[78px] items-center justify-center rounded-full bg-white">
+                  <span
+                    className="text-base font-black"
+                    style={{ color: progressColor }}
+                  >
+                    {data.bajarilish_foizi}%
+                  </span>
+                </div>
               </div>
               <span className="text-xs font-semibold mt-1 text-slate-400 uppercase tracking-wider">
                 Bajarilish
@@ -291,20 +272,20 @@ const BayonnomaSinglePage = () => {
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
               Bayonnoma ma'lumotlari
             </p>
-            <Divider className="my-3!" />
+            <div className="my-3 h-px bg-slate-100" />
 
             <InfoRow
               icon={<UserOutlined />}
               label="Yaratuvchi"
               value={data.yaratuvchi_fio}
             />
-            <Divider className="my-0!" />
+            <div className="h-px bg-slate-100" />
             <InfoRow
               icon={<CalendarOutlined />}
               label="Sana"
               value={formatDate(data.sana)}
             />
-            <Divider className="my-0!" />
+            <div className="h-px bg-slate-100" />
             <InfoRow
               icon={<TeamOutlined />}
               label="Ishtirokchilar"
@@ -321,7 +302,7 @@ const BayonnomaSinglePage = () => {
 
             {data.izoh && (
               <>
-                <Divider className="my-0!" />
+                <div className="h-px bg-slate-100" />
                 <InfoRow
                   icon={<MessageOutlined />}
                   label="Izoh"
@@ -334,7 +315,7 @@ const BayonnomaSinglePage = () => {
 
             {data.fayl && (
               <>
-                <Divider className="my-0!" />
+                <div className="h-px bg-slate-100" />
                 <InfoRow
                   icon={<LinkOutlined />}
                   label="Fayl"
@@ -353,7 +334,7 @@ const BayonnomaSinglePage = () => {
               </>
             )}
 
-            <Divider className="my-0!" />
+            <div className="h-px bg-slate-100" />
             <InfoRow
               icon={<ClockCircleOutlined />}
               label="Yaratilgan"
@@ -361,7 +342,7 @@ const BayonnomaSinglePage = () => {
                 <span className="text-xs">{formatDate(data.created_at)}</span>
               }
             />
-            <Divider className="my-0!" />
+            <div className="h-px bg-slate-100" />
             <InfoRow
               icon={<ClockCircleOutlined />}
               label="Yangilangan"
@@ -396,16 +377,12 @@ const BayonnomaSinglePage = () => {
                         {cfg.label}
                       </span>
                     </div>
-                    <Badge
-                      count={count}
-                      style={{
-                        backgroundColor: cfg.color,
-                        minWidth: 22,
-                        height: 22,
-                        lineHeight: "22px",
-                        borderRadius: 11,
-                      }}
-                    />
+                    <span
+                      className="inline-flex min-w-[22px] items-center justify-center rounded-full px-2 py-1 text-xs font-semibold text-white"
+                      style={{ backgroundColor: cfg.color }}
+                    >
+                      {count}
+                    </span>
                   </div>
                 );
               })}
@@ -419,9 +396,9 @@ const BayonnomaSinglePage = () => {
             <div className="flex items-center gap-2">
               <CheckSquareOutlined className="text-indigo-500 text-base" />
               <span className="font-bold text-slate-800">Topshiriqlar</span>
-              <Tag className="rounded-full! font-bold! ml-1!" color="purple">
+              <span className="ml-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-bold text-violet-600">
                 {data.topshiriqlar.length}
-              </Tag>
+              </span>
             </div>
 
             {/* ← NEW button */}
@@ -460,7 +437,7 @@ const BayonnomaSinglePage = () => {
           setAddOpen(false);
           // Re-fetch to get updated topshiriqlar list
           api
-            .get<BayonnomaSingle>(`${API_ENDPOINTS.BAYONNOMALAR.LIST}${id}/`)
+            .get<BayonnomaSingle>(API_ENDPOINTS.BAYONNOMALAR.DETAIL(id!))
             .then((res) => setData(res.data));
         }}
       />

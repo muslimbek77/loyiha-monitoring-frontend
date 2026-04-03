@@ -8,7 +8,6 @@ import {
   PaperClipOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { Tooltip } from "antd";
 import { IzohlarSection } from "./AddIzohForm";
 import { Link } from "react-router-dom";
 
@@ -187,11 +186,12 @@ export const TopshiriqCard = ({
         </div>
         <div className="flex items-center gap-2">
           {t.is_kechikkan && (
-            <Tooltip title="Muddat o'tib ketgan">
-              <span className="flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-500 border border-red-100">
-                <WarningOutlined /> Kechikkan
-              </span>
-            </Tooltip>
+            <span
+              title="Muddat o'tib ketgan"
+              className="flex items-center gap-1 rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-500"
+            >
+              <WarningOutlined /> Kechikkan
+            </span>
           )}
           <span
             className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border"

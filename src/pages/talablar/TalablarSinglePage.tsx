@@ -5,12 +5,9 @@ import {
   Skeleton,
   Avatar,
   Typography,
-  Divider,
   Timeline,
   Button,
-  Tooltip,
   Input,
-  Upload,
   message,
 } from "antd";
 import {
@@ -34,6 +31,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { formatDate } from "@/shared/components/const/CustomUI";
 import api from "@/services/api/axios";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 import type { UploadFile } from "antd/es/upload/interface";
 
 const { Text, Title, Paragraph } = Typography;
@@ -191,7 +189,7 @@ const TalablarSinglePage = () => {
   const fetchTalab = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`talablar/${id}/`);
+      const res = await api.get(API_ENDPOINTS.TALABLAR.DETAIL(id!));
       setData(res.data);
     } catch (error) {
       console.error("Failed to fetch talab details:", error);
@@ -233,7 +231,7 @@ const TalablarSinglePage = () => {
         formData.append("fayl", izohFayl);
       }
 
-      await api.post(`talablar/${id}/izoh_qoshish/`, formData, {
+      await api.post(API_ENDPOINTS.TALABLAR.IZOH_QOSHISH(id!), formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -337,7 +335,7 @@ const TalablarSinglePage = () => {
             </div>
           </div>
 
-          <Divider className="my-4! border-slate-100!" />
+          <div className="my-4 h-px bg-slate-100" />
 
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
@@ -589,13 +587,13 @@ const TalablarSinglePage = () => {
                 </span>
               }
             />
-            <Divider className="my-0! border-slate-100!" />
+            <div className="h-px bg-slate-100" />
             <InfoRow
               icon={<CalendarOutlined />}
               label="Yaratilgan sana"
               value={formatDate(data.created_at)}
             />
-            <Divider className="my-0! border-slate-100!" />
+            <div className="h-px bg-slate-100" />
             <InfoRow
               icon={<CalendarOutlined />}
               label="Muddat"
@@ -618,7 +616,7 @@ const TalablarSinglePage = () => {
             />
             {data.bajarildi_sana && (
               <>
-                <Divider className="my-0! border-slate-100!" />
+                <div className="h-px bg-slate-100" />
                 <InfoRow
                   icon={<CheckCircleFilled className="text-green-500" />}
                   label="Bajarilgan sana"
@@ -630,13 +628,13 @@ const TalablarSinglePage = () => {
                 />
               </>
             )}
-            <Divider className="my-0! border-slate-100!" />
+            <div className="h-px bg-slate-100" />
             <InfoRow
               icon={<UserOutlined />}
               label="So'rovchi bo'lim"
               value={data.sorovchi_boshqarma_nomi}
             />
-            <Divider className="my-0! border-slate-100!" />
+            <div className="h-px bg-slate-100" />
             <InfoRow
               icon={<TeamOutlined />}
               label="Ijrochi bo'lim"

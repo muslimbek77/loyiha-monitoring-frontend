@@ -5,13 +5,10 @@ import {
   Modal,
   Form,
   Input,
-  DatePicker,
   Upload,
   Button,
   message,
   Spin,
-  Divider,
-  Typography,
 } from "antd";
 import {
   EditOutlined,
@@ -24,9 +21,6 @@ import {
   CloseOutlined,
   LoadingOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
-
-const { Text } = Typography;
 const { TextArea } = Input;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -92,7 +86,7 @@ const BayonnomaEditModal = ({
     if (bayonnoma && open) {
       form.setFieldsValue({
         raqami: bayonnoma.raqami,
-        sana: bayonnoma.sana ? dayjs(bayonnoma.sana) : null,
+        sana: bayonnoma.sana || "",
         mavzu: bayonnoma.mavzu,
         ishtirokchilar: bayonnoma.ishtirokchilar ?? "",
         izoh: bayonnoma.izoh ?? "",
@@ -114,10 +108,7 @@ const BayonnomaEditModal = ({
 
       const formData = new FormData();
       formData.append("raqami", values.raqami);
-      formData.append(
-        "sana",
-        values.sana ? dayjs(values.sana).format("YYYY-MM-DD") : ""
-      );
+      formData.append("sana", values.sana || "");
       formData.append("mavzu", values.mavzu);
       formData.append("ishtirokchilar", values.ishtirokchilar ?? "");
       formData.append("izoh", values.izoh ?? "");
@@ -126,7 +117,7 @@ const BayonnomaEditModal = ({
       }
 
       const res = await api.put<BayonnomaEditData>(
-        `${API_ENDPOINTS.BAYONNOMALAR.LIST}${bayonnoma!.id}/`,
+        API_ENDPOINTS.BAYONNOMALAR.DETAIL(bayonnoma!.id),
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -231,11 +222,9 @@ const BayonnomaEditModal = ({
               rules={[{ required: true, message: "Sanani tanlang" }]}
               className="mb-4!"
             >
-              <DatePicker
-                format="DD.MM.YYYY"
-                placeholder="KK.OO.YYYY"
-                className="w-full rounded-xl! border-slate-200! hover:border-indigo-300! h-10!"
-                suffixIcon={<CalendarOutlined className="text-slate-400" />}
+              <input
+                type="date"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-700 outline-none transition hover:border-indigo-300 focus:border-indigo-500"
               />
             </Form.Item>
           </div>
@@ -305,7 +294,7 @@ const BayonnomaEditModal = ({
             </Upload>
           </Form.Item>
 
-          <Divider className="my-4!" />
+          <div className="my-4 h-px bg-slate-100" />
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3">

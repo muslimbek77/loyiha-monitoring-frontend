@@ -1,23 +1,11 @@
 import { useState, useEffect } from "react";
 import {
-  Table,
-  Tag,
-  Badge,
   Input,
   Select,
   Button,
-  Tooltip,
-  Space,
-  Card,
-  Statistic,
-  Typography,
-  Skeleton,
   Modal,
   Form,
-  DatePicker,
   notification,
-  Tabs,
-  Popconfirm,
 } from "antd";
 import {
   SearchOutlined,
@@ -35,13 +23,12 @@ import {
   CloseOutlined,
   PlayCircleOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api/axios";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 import Can from "@/shared/components/guards/Can";
 import { usePermissions } from "@/features/auth/hooks/usePermissions";
 
-const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
@@ -95,21 +82,17 @@ interface Kategoriya {
   hujjatlar_soni: number;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-async function fetchAllPages<T>(endpoint: string): Promise<T[]> {
-  const results: T[] = [];
-  let url: string | null = endpoint;
-
-  while (url) {
-    const path = url.includes("/api/v1/") ? url.split("/api/v1/")[1] : url;
-    const res = await api.get<ApiResponse<T>>(path);
-    results.push(...res.data.results);
-    url = res.data.next;
-  }
-
-  return results;
-}
+const flattenKategoriyaTree = (
+  nodes: Kategoriya[],
+  prefix = "",
+): Kategoriya[] =>
+  nodes.flatMap((node) => {
+    const full_path = prefix ? `${prefix} / ${node.nomi}` : node.nomi;
+    return [
+      { ...node, full_path },
+      ...flattenKategoriyaTree(node.children ?? [], full_path),
+    ];
+  });
 
 // ── Status config ──────────────────────────────────────────────────────────────
 
@@ -168,6 +151,8 @@ const formatDate = (dateStr: string) =>
     year: "numeric",
   });
 
+const PAGE_SIZE = 10;
+
 // ── Reusable TalabTable ────────────────────────────────────────────────────────
 
 interface TalabTableProps {
@@ -189,6 +174,7 @@ const TalabTable = ({
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>(
     {},
   );
+  const [page, setPage] = useState(1);
   const [notifApi, contextHolder] = notification.useNotification();
 
   const { role } = usePermissions();
@@ -203,9 +189,25 @@ const TalabTable = ({
     id: number,
     action: "qabul_qilish" | "rad_etish" | "bajarish",
   ) => {
+    const prompts = {
+      qabul_qilish: "Talabni qabul qilasizmi?",
+      rad_etish: "Talabni rad etasizmi?",
+      bajarish: "Talab bajarildi deb belgilansinmi?",
+    };
+
+    if (!window.confirm(prompts[action])) {
+      return;
+    }
+
     setLoadingKey(id, action, true);
     try {
-      const res = await api.post<Talab>(`talablar/${id}/${action}/`);
+      const endpoint =
+        action === "qabul_qilish"
+          ? API_ENDPOINTS.TALABLAR.QABUL_QILISH(id)
+          : action === "rad_etish"
+            ? API_ENDPOINTS.TALABLAR.RAD_ETISH(id)
+            : API_ENDPOINTS.TALABLAR.BAJARISH(id);
+      const res = await api.post<Talab>(endpoint);
       onUpdateRecord?.(res.data);
       const labels = {
         qabul_qilish: "Talab qabul qilindi",
@@ -235,196 +237,19 @@ const TalabTable = ({
     return matchSearch && matchStatus;
   });
 
-  const actionsColumn: ColumnsType<Talab>[number] = {
-    title: "",
-    key: "actions",
-    width: 120,
-    render: (_, record) => {
-      const hasAny =
-        canQabulQilish(record.status) ||
-        canRadEtish(record.status) ||
-        canBajarish(record.status);
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, data]);
 
-      if (!hasAny) return null;
-
-      return role !== "rais" ? (
-        <div
-          className="flex items-center gap-1"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {canQabulQilish(record.status) && (
-            <Tooltip title="Qabul qilish">
-              <Popconfirm
-                title="Talabni qabul qilasizmi?"
-                okText="Ha"
-                cancelText="Yo'q"
-                onConfirm={() => runAction(record.id, "qabul_qilish")}
-                okButtonProps={{ className: "bg-blue-500" }}
-              >
-                <Button
-                  size="small"
-                  type="text"
-                  loading={isLoadingKey(record.id, "qabul_qilish")}
-                  icon={<CheckOutlined />}
-                  className="!text-blue-500 hover:!bg-blue-50 !border !border-blue-200 rounded-lg"
-                />
-              </Popconfirm>
-            </Tooltip>
-          )}
-
-          {canRadEtish(record.status) && (
-            <Tooltip title="Rad etish">
-              <Popconfirm
-                title="Talabni rad etasizmi?"
-                okText="Ha"
-                cancelText="Yo'q"
-                okType="danger"
-                onConfirm={() => runAction(record.id, "rad_etish")}
-              >
-                <Button
-                  size="small"
-                  type="text"
-                  loading={isLoadingKey(record.id, "rad_etish")}
-                  icon={<CloseOutlined />}
-                  className="!text-red-500 hover:!bg-red-50 !border !border-red-200 rounded-lg"
-                />
-              </Popconfirm>
-            </Tooltip>
-          )}
-
-          {canBajarish(record.status) && (
-            <Tooltip title="Bajarildi deb belgilash">
-              <Popconfirm
-                title="Talab bajarildi deb belgilansinmi?"
-                okText="Ha"
-                cancelText="Yo'q"
-                onConfirm={() => runAction(record.id, "bajarish")}
-                okButtonProps={{ className: "bg-green-500" }}
-              >
-                <Button
-                  size="small"
-                  type="text"
-                  loading={isLoadingKey(record.id, "bajarish")}
-                  icon={<PlayCircleOutlined />}
-                  className="!text-green-600 hover:!bg-green-50 !border !border-green-200 rounded-lg"
-                />
-              </Popconfirm>
-            </Tooltip>
-          )}
-        </div>
-      ) : null;
-    },
-  };
-
-  const baseColumns: ColumnsType<Talab> = [
-    {
-      title: "№",
-      dataIndex: "id",
-      key: "id",
-      width: 60,
-      render: (id) => (
-        <span className="font-mono text-xs text-gray-400 font-semibold">
-          #{id}
-        </span>
-      ),
-    },
-    {
-      title: "Mavzu",
-      dataIndex: "mavzu",
-      key: "mavzu",
-      render: (mavzu, record) => (
-        <div className="flex items-center gap-2">
-          <FileTextOutlined className="text-blue-400 mt-0.5 flex-shrink-0" />
-          <div>
-            <div className="font-medium text-gray-800 text-sm">{mavzu}</div>
-            <div className="text-xs text-gray-400 mt-0.5">
-              {formatDate(record.created_at)}
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "So'rovchi bo'lim",
-      dataIndex: "sorovchi_boshqarma_nomi",
-      key: "sorovchi",
-      render: (val) => (
-        <span className="text-sm text-gray-600 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
-          {val}
-        </span>
-      ),
-    },
-    {
-      title: "Ijrochi bo'lim",
-      dataIndex: "ijrochi_boshqarma_nomi",
-      key: "ijrochi",
-      render: (val) => (
-        <span className="text-sm text-gray-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-          {val}
-        </span>
-      ),
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      width: 150,
-      render: (status, record) => {
-        const cfg = statusConfig[status] || statusConfig.kutilmoqda;
-        return (
-          <Tag
-            icon={cfg.icon}
-            style={{
-              color: cfg.color,
-              background: cfg.bg,
-              borderColor: cfg.border,
-              borderRadius: 20,
-              padding: "2px 10px",
-              fontWeight: 500,
-              fontSize: 12,
-            }}
-          >
-            {record.status_display}
-          </Tag>
-        );
-      },
-    },
-    {
-      title: "Muddat",
-      dataIndex: "muddat",
-      key: "muddat",
-      width: 150,
-      render: (muddat, record) => (
-        <div className="flex items-center gap-1.5">
-          {record.is_kechikkan ? (
-            <Tooltip title="Muddat o'tib ketgan">
-              <div className="flex items-center gap-1 bg-red-50 border border-red-200 text-red-500 rounded-lg px-2 py-1 text-xs font-medium">
-                <ExclamationCircleOutlined />
-                <span>{formatDate(muddat)}</span>
-              </div>
-            </Tooltip>
-          ) : (
-            <div className="flex items-center gap-1 bg-green-50 border border-green-200 text-green-600 rounded-lg px-2 py-1 text-xs font-medium">
-              <ClockCircleOutlined />
-              <span>{formatDate(muddat)}</span>
-            </div>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  const columns = showActions ? [...baseColumns, actionsColumn] : baseColumns;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <>
       {contextHolder}
 
       {/* Filters */}
-      <Card
-        className="!border-slate-200 !shadow-sm mb-4"
-        bodyStyle={{ padding: "12px 16px" }}
-      >
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div className="flex flex-wrap gap-3 items-center">
           <Input
             placeholder="Mavzu yoki bo'lim bo'yicha qidiring..."
@@ -448,59 +273,208 @@ const TalabTable = ({
             <Option value="kutilmoqda">Kutilmoqda</Option>
             <Option value="rad_etildi">Rad etildi</Option>
           </Select>
-          <Space className="ml-auto">
-            <Badge
-              count={filtered.length}
-              showZero
-              style={{ backgroundColor: "#1677ff" }}
-            >
-              <span className="text-xs text-gray-400 pr-2">natija</span>
-            </Badge>
-          </Space>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-gray-400">natija</span>
+            <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-blue-500 px-2 py-1 text-xs font-semibold text-white">
+              {filtered.length}
+            </span>
+          </div>
         </div>
-      </Card>
+      </div>
 
       {/* Table */}
-      <Card className="!border-slate-200 !shadow-sm" bodyStyle={{ padding: 0 }}>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {loading ? (
           <div className="p-6">
-            <Skeleton active paragraph={{ rows: 6 }} />
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-12 animate-pulse rounded-xl bg-slate-100"
+                />
+              ))}
+            </div>
           </div>
         ) : (
-          <Table
-            dataSource={filtered}
-            columns={columns}
-            rowKey="id"
-            onRow={(record) => ({
-              onClick: () => navigate(`/talablar/${record.id}`),
-              style: { cursor: "pointer" },
-            })}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: false,
-              showTotal: (total) => (
-                <span className="text-gray-400 text-sm">
-                  Jami: <strong>{total}</strong> ta talab
-                </span>
-              ),
-            }}
-            rowClassName={(record) =>
-              record.is_kechikkan
-                ? "bg-red-50/40 hover:bg-red-50"
-                : "hover:bg-blue-50/30"
-            }
-            className="[&_.ant-table-thead_th]:bg-slate-50 [&_.ant-table-thead_th]:text-gray-500 [&_.ant-table-thead_th]:text-xs [&_.ant-table-thead_th]:font-semibold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-wide [&_.ant-table-thead_th]:border-b [&_.ant-table-thead_th]:border-slate-200"
-            locale={{
-              emptyText: (
-                <div className="py-12 text-center text-gray-400">
-                  <FileTextOutlined className="text-4xl mb-3 opacity-30" />
-                  <div>Ma'lumot topilmadi</div>
+          <>
+            {filtered.length === 0 ? (
+              <div className="py-12 text-center text-gray-400">
+                <FileTextOutlined className="mb-3 text-4xl opacity-30" />
+                <div>Ma'lumot topilmadi</div>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        <th className="px-4 py-3">№</th>
+                        <th className="px-4 py-3">Mavzu</th>
+                        <th className="px-4 py-3">So'rovchi bo'lim</th>
+                        <th className="px-4 py-3">Ijrochi bo'lim</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Muddat</th>
+                        {showActions ? <th className="px-4 py-3 text-right">Amallar</th> : null}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginated.map((record) => {
+                        const cfg = statusConfig[record.status] || statusConfig.kutilmoqda;
+                        const hasAny =
+                          canQabulQilish(record.status) ||
+                          canRadEtish(record.status) ||
+                          canBajarish(record.status);
+
+                        return (
+                          <tr
+                            key={record.id}
+                            onClick={() => navigate(`/talablar/${record.id}`)}
+                            className={`cursor-pointer border-b border-slate-100 align-top last:border-b-0 ${
+                              record.is_kechikkan
+                                ? "bg-red-50/40 hover:bg-red-50"
+                                : "hover:bg-blue-50/30"
+                            }`}
+                          >
+                            <td className="px-4 py-3">
+                              <span className="font-mono text-xs font-semibold text-gray-400">
+                                #{record.id}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <FileTextOutlined className="mt-0.5 shrink-0 text-blue-400" />
+                                <div>
+                                  <div className="text-sm font-medium text-gray-800">
+                                    {record.mavzu}
+                                  </div>
+                                  <div className="mt-0.5 text-xs text-gray-400">
+                                    {formatDate(record.created_at)}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-gray-600">
+                                {record.sorovchi_boshqarma_nomi}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="rounded-md border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-sm text-gray-600">
+                                {record.ijrochi_boshqarma_nomi}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium"
+                                style={{
+                                  color: cfg.color,
+                                  background: cfg.bg,
+                                  borderColor: cfg.border,
+                                }}
+                              >
+                                <span>{cfg.icon}</span>
+                                {record.status_display}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {record.is_kechikkan ? (
+                                <div
+                                  title="Muddat o'tib ketgan"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-500"
+                                >
+                                  <ExclamationCircleOutlined />
+                                  <span>{formatDate(record.muddat)}</span>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-1 rounded-lg border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-600">
+                                  <ClockCircleOutlined />
+                                  <span>{formatDate(record.muddat)}</span>
+                                </div>
+                              )}
+                            </td>
+                            {showActions ? (
+                              <td className="px-4 py-3">
+                                {role !== "rais" && hasAny ? (
+                                  <div
+                                    className="flex justify-end gap-1"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {canQabulQilish(record.status) && (
+                                      <Button
+                                        size="small"
+                                        type="text"
+                                        title="Qabul qilish"
+                                        loading={isLoadingKey(record.id, "qabul_qilish")}
+                                        icon={<CheckOutlined />}
+                                        onClick={() => runAction(record.id, "qabul_qilish")}
+                                        className="!rounded-lg !border !border-blue-200 !text-blue-500 hover:!bg-blue-50"
+                                      />
+                                    )}
+                                    {canRadEtish(record.status) && (
+                                      <Button
+                                        size="small"
+                                        type="text"
+                                        title="Rad etish"
+                                        loading={isLoadingKey(record.id, "rad_etish")}
+                                        icon={<CloseOutlined />}
+                                        onClick={() => runAction(record.id, "rad_etish")}
+                                        className="!rounded-lg !border !border-red-200 !text-red-500 hover:!bg-red-50"
+                                      />
+                                    )}
+                                    {canBajarish(record.status) && (
+                                      <Button
+                                        size="small"
+                                        type="text"
+                                        title="Bajarildi deb belgilash"
+                                        loading={isLoadingKey(record.id, "bajarish")}
+                                        icon={<PlayCircleOutlined />}
+                                        onClick={() => runAction(record.id, "bajarish")}
+                                        className="!rounded-lg !border !border-green-200 !text-green-600 hover:!bg-green-50"
+                                      />
+                                    )}
+                                  </div>
+                                ) : null}
+                              </td>
+                            ) : null}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              ),
-            }}
-          />
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+                  <span className="text-sm text-gray-400">
+                    Jami: <strong>{filtered.length}</strong> ta talab
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                      disabled={page === 1}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Oldingi
+                    </button>
+                    <span className="text-sm text-slate-500">
+                      {page} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPage((prev) => Math.min(totalPages, prev + 1))
+                      }
+                      disabled={page === totalPages}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Keyingi
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
         )}
-      </Card>
+      </div>
     </>
   );
 };
@@ -525,11 +499,12 @@ const Talablar = () => {
   const [boshqarmalar, setBoshqarmalar] = useState<Boshqarma[]>([]);
   const [kategoriyalar, setKategoriyalar] = useState<Kategoriya[]>([]);
   const [formDataLoading, setFormDataLoading] = useState(false);
+  const [kategoriyaLoading, setKategoriyaLoading] = useState(false);
   const { role } = usePermissions();
 
   useEffect(() => {
     api
-      .get<ApiResponse<Talab>>("talablar/")
+      .get<ApiResponse<Talab>>(API_ENDPOINTS.TALABLAR.LIST)
       .then((res) => setAllData(res.data.results))
       .catch(() =>
         notifApi.error({
@@ -541,7 +516,7 @@ const Talablar = () => {
       .finally(() => setAllLoading(false));
 
     api
-      .get<Talab[]>("talablar/yuborgan/")
+      .get<Talab[]>(API_ENDPOINTS.TALABLAR.YUBORGAN)
       .then((res) => setYuborgan(res.data))
       .catch(() =>
         notifApi.error({
@@ -553,7 +528,7 @@ const Talablar = () => {
       .finally(() => setYuborganLoading(false));
 
     api
-      .get<Talab[]>("talablar/kelgan/")
+      .get<Talab[]>(API_ENDPOINTS.TALABLAR.KELGAN)
       .then((res) => setKelgan(res.data))
       .catch(() =>
         notifApi.error({
@@ -567,26 +542,54 @@ const Talablar = () => {
 
   useEffect(() => {
     if (!modalOpen) return;
-    if (boshqarmalar.length > 0 && kategoriyalar.length > 0) return;
+    if (boshqarmalar.length > 0) return;
 
     setFormDataLoading(true);
-    Promise.all([
-      fetchAllPages<Boshqarma>("core/boshqarmalar/"),
-      fetchAllPages<Kategoriya>("hujjatlar/kategoriyalar/"),
-    ])
-      .then(([boshs, kats]) => {
-        setBoshqarmalar(boshs);
-        setKategoriyalar(kats);
+    api
+      .get<ApiResponse<Boshqarma>>(API_ENDPOINTS.BOSHQARMA.LIST, {
+        params: { all: true },
+      })
+      .then((res) => {
+        const items = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+        setBoshqarmalar(items);
       })
       .catch(() =>
         notifApi.error({
           message: "Ma'lumot yuklashda xatolik",
-          description: "Bo'limlar yoki kategoriyalarni yuklab bo'lmadi.",
+          description: "Bo'limlarni yuklab bo'lmadi.",
           placement: "topRight",
         }),
       )
       .finally(() => setFormDataLoading(false));
-  }, [modalOpen]);
+  }, [modalOpen, boshqarmalar.length, notifApi]);
+
+  const handleBoshqarmaSelect = async (boshqarmaId: number) => {
+    form.setFieldValue("ijrochi_boshqarma", boshqarmaId);
+    form.setFieldValue("kategoriya", undefined);
+    setKategoriyalar([]);
+
+    if (!boshqarmaId) return;
+
+    try {
+      setKategoriyaLoading(true);
+      const res = await api.get<Kategoriya[] | ApiResponse<Kategoriya>>(
+        API_ENDPOINTS.KATEGORIYALAR.BOSHQARMA,
+        {
+          params: { boshqarma: boshqarmaId },
+        },
+      );
+      const items = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+      setKategoriyalar(flattenKategoriyaTree(items));
+    } catch {
+      notifApi.error({
+        message: "Kategoriya yuklanmadi",
+        description: "Tanlangan boshqarma uchun kategoriyalarni olishda muammo bo'ldi.",
+        placement: "topRight",
+      });
+    } finally {
+      setKategoriyaLoading(false);
+    }
+  };
 
   /** Sync updated record across all three lists */
   const handleUpdateRecord = (updated: Talab) => {
@@ -602,12 +605,10 @@ const Talablar = () => {
     try {
       const payload = {
         ...values,
-        muddat: values.muddat
-          ? (values.muddat as any).format("YYYY-MM-DD")
-          : undefined,
+        muddat: values.muddat || undefined,
       };
 
-      const res = await api.post<Talab>("talablar/", payload);
+      const res = await api.post<Talab>(API_ENDPOINTS.TALABLAR.LIST, payload);
       setAllData((prev) => [res.data, ...prev]);
       setYuborgan((prev) => [res.data, ...prev]);
       notifApi.success({
@@ -644,12 +645,7 @@ const Talablar = () => {
           <span className="flex items-center gap-1.5">
             <UnorderedListOutlined />
             Barcha talablar
-            <Badge
-              count={allData.length}
-              showZero
-              style={{ backgroundColor: "#1677ff", marginLeft: 4 }}
-              size="small"
-            />
+            <TabCount value={allData.length} tone="blue" />
           </span>
         </Can>
       ),
@@ -670,12 +666,7 @@ const Talablar = () => {
         <span className="flex items-center gap-1.5">
           <SendOutlined />
           Yuborgan
-          <Badge
-            count={yuborgan.length}
-            showZero
-            style={{ backgroundColor: "#722ed1", marginLeft: 4 }}
-            size="small"
-          />
+          <TabCount value={yuborgan.length} tone="violet" />
         </span>
       ),
       children: (
@@ -689,12 +680,7 @@ const Talablar = () => {
         <span className="flex items-center gap-1.5">
           <InboxOutlined />
           Kelgan
-          <Badge
-            count={kelgan.length}
-            showZero
-            style={{ backgroundColor: "#52c41a", marginLeft: 4 }}
-            size="small"
-          />
+          <TabCount value={kelgan.length} tone="green" />
         </span>
       ),
       children: (
@@ -734,7 +720,16 @@ const Talablar = () => {
         className="[&_.ant-modal-content]:rounded-2xl [&_.ant-modal-header]:rounded-t-2xl"
         destroyOnClose
       >
-        <Skeleton active loading={formDataLoading} paragraph={{ rows: 6 }}>
+        {formDataLoading ? (
+          <div className="space-y-3 py-2">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-11 animate-pulse rounded-xl bg-slate-100"
+              />
+            ))}
+          </div>
+        ) : (
           <Form
             form={form}
             layout="vertical"
@@ -774,6 +769,7 @@ const Talablar = () => {
                   showSearch
                   optionFilterProp="children"
                   className="rounded-lg"
+                  onChange={handleBoshqarmaSelect}
                 >
                   {boshqarmalar.map((b) => (
                     <Option key={b.id} value={b.id}>
@@ -795,12 +791,14 @@ const Talablar = () => {
                   placeholder="Kategoriya"
                   size="large"
                   showSearch
+                  loading={kategoriyaLoading}
+                  disabled={!form.getFieldValue("ijrochi_boshqarma") || kategoriyaLoading}
                   optionFilterProp="children"
                   className="rounded-lg"
                 >
                   {kategoriyalar.map((k) => (
                     <Option key={k.id} value={k.id}>
-                      {k.boshqarma_nomi || k.nomi}
+                      {k.full_path || k.nomi}
                     </Option>
                   ))}
                 </Select>
@@ -832,14 +830,10 @@ const Talablar = () => {
               name="muddat"
               rules={[{ required: true, message: "Muddatni tanlang" }]}
             >
-              <DatePicker
-                placeholder="Sanani tanlang"
-                size="large"
-                className="w-full rounded-lg"
-                format="YYYY-MM-DD"
-                disabledDate={(current) =>
-                  current && current < new Date().setHours(0, 0, 0, 0)
-                }
+              <input
+                type="date"
+                min={new Date().toISOString().split("T")[0]}
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700 outline-none transition focus:border-blue-500"
               />
             </Form.Item>
 
@@ -866,21 +860,21 @@ const Talablar = () => {
               </Button>
             </div>
           </Form>
-        </Skeleton>
+        )}
       </Modal>
 
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-1">
           <div>
-            <Title level={3} className="mb-0! text-gray-800!">
+            <h1 className="text-3xl font-semibold text-gray-800">
               Talablar
-            </Title>
-            <Text className="text-gray-400 text-sm">
+            </h1>
+            <p className="text-sm text-gray-400">
               Barcha so'rovlar va talablar ro'yxati
-            </Text>
+            </p>
           </div>
-          <Space>
+          <div className="flex items-center gap-2">
             {role !== "rais" && (
               <Can action="canCreate">
                 <Button
@@ -903,7 +897,7 @@ const Talablar = () => {
                 Yangi talab
               </Button>
             </Can>
-          </Space>
+          </div>
         </div>
       </div>
 
@@ -936,49 +930,67 @@ const Talablar = () => {
               bg: "from-red-400 to-rose-500",
             },
           ].map((stat) => (
-            <Card
+            <div
               key={stat.label}
-              className="border-0! shadow-sm! overflow-hidden relative"
-              bodyStyle={{ padding: "16px 20px" }}
+              className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm"
             >
               <div
                 className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${stat.bg}`}
               />
-              <Statistic
-                title={
-                  <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">
-                    {stat.label}
-                  </span>
-                }
-                value={allLoading ? "-" : stat.value}
-                valueStyle={{
-                  color: stat.color,
-                  fontSize: 28,
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                }}
-              />
-            </Card>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                {stat.label}
+              </p>
+              <p
+                className="mt-2 text-3xl font-bold leading-none"
+                style={{ color: stat.color }}
+              >
+                {allLoading ? "-" : stat.value}
+              </p>
+            </div>
           ))}
         </div>
       </Can>
 
       {/* Tabs */}
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={tabItems}
-        className="[&_.ant-tabs-nav]:mb-4 [&_.ant-tabs-tab]:font-medium [&_.ant-tabs-tab]:text-gray-500 [&_.ant-tabs-tab-active_.ant-tabs-tab-btn]:text-blue-600 mx-0!"
-        tabBarStyle={{
-          background: "white",
-          padding: "0 16px",
-          borderRadius: 12,
-          border: "1px solid #e2e8f0",
-          marginBottom: 16,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-        }}
-      />
+      <div className="mb-4 flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+        {tabItems.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              activeTab === tab.key
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-500 hover:bg-slate-50 hover:text-slate-700"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {tabItems.find((tab) => tab.key === activeTab)?.children}
     </div>
+  );
+};
+
+const TabCount = ({
+  value,
+  tone,
+}: {
+  value: number;
+  tone: "blue" | "violet" | "green";
+}) => {
+  const toneClass = {
+    blue: "bg-blue-500",
+    violet: "bg-violet-600",
+    green: "bg-green-500",
+  }[tone];
+
+  return (
+    <span
+      className={`ml-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold text-white ${toneClass}`}
+    >
+      {value}
+    </span>
   );
 };
 

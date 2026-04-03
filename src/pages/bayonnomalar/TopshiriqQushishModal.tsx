@@ -5,12 +5,10 @@ import {
   Modal,
   Form,
   Input,
-  DatePicker,
   Select,
   InputNumber,
   Button,
   message,
-  Divider,
 } from "antd";
 import {
   PlusOutlined,
@@ -27,7 +25,6 @@ import {
   PaperClipOutlined,
   CheckSquareOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 
 const { TextArea } = Input;
 
@@ -139,7 +136,7 @@ const TopshiriqQoshishModal = ({
       // Fetch boshqarmalar
       setBoshqarmaLoading(true);
       api
-        .get("/core/boshqarmalar/")
+        .get(API_ENDPOINTS.BOSHQARMA.LIST)
         .then((res) => setBoshqarmalar(res.data?.results ?? res.data))
         .catch(() => message.error("Boshqarmalar yuklanmadi"))
         .finally(() => setBoshqarmaLoading(false));
@@ -147,7 +144,7 @@ const TopshiriqQoshishModal = ({
       // Fetch xodimlar
       setXodimLoading(true);
       api
-        .get("/auth/users/?all=true")
+        .get(API_ENDPOINTS.USERS.LIST_ALL)
         .then((res) => setXodimlar(res.data?.results ?? res.data))
         .catch(() => message.error("Xodimlar yuklanmadi"))
         .finally(() => setXodimLoading(false));
@@ -184,7 +181,7 @@ const TopshiriqQoshishModal = ({
       const values = form.getFieldsValue();
       const payload: TopshiriqQoshishPayload = {
         mazmun: values.mazmun,
-        muddat: values.muddat ? dayjs(values.muddat).format("YYYY-MM-DD") : "",
+        muddat: values.muddat || "",
         ijrochi_boshqarma: values.ijrochi_boshqarma ?? null,
         ijrochi_xodim: values.ijrochi_xodim?.length
           ? values.ijrochi_xodim
@@ -195,7 +192,7 @@ const TopshiriqQoshishModal = ({
       };
 
       await api.post(
-        `${API_ENDPOINTS.BAYONNOMALAR.LIST}${bayonnomaId}/topshiriq_qoshish/`,
+        `${API_ENDPOINTS.BAYONNOMALAR.DETAIL(bayonnomaId)}topshiriq_qoshish/`,
         payload,
       );
 
@@ -334,12 +331,10 @@ const TopshiriqQoshishModal = ({
               rules={[{ required: true, message: "Muddatni tanlang" }]}
               className="mb-0!"
             >
-              <DatePicker
-                format="DD.MM.YYYY"
-                placeholder="KK.OO.YYYY"
-                disabledDate={(d) => d && d.isBefore(dayjs().startOf("day"))}
-                className="w-full rounded-xl! border-slate-200! hover:border-emerald-300! h-10!"
-                suffixIcon={<CalendarOutlined className="text-slate-400" />}
+              <input
+                type="date"
+                min={new Date().toISOString().split("T")[0]}
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-700 outline-none transition hover:border-emerald-300 focus:border-emerald-500"
               />
             </Form.Item>
           </div>
@@ -475,7 +470,7 @@ const TopshiriqQoshishModal = ({
             </Form.Item>
           </div>
 
-          <Divider className="mt-6 mb-4!" />
+          <div className="mb-4 mt-6 h-px bg-slate-100" />
 
           {/* ── Footer Actions ── */}
           <div className="flex items-center justify-between gap-3">

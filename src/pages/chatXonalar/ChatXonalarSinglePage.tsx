@@ -28,6 +28,7 @@ import {
   LoadingOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate, useParams } from "react-router-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -278,7 +279,7 @@ const ChatXonaSinglePage = () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await api.get<XonaDetail>(`chat/xonalar/${id}/`);
+        const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
         setData(res.data);
       } catch (err: any) {
         setError(
@@ -303,7 +304,7 @@ const ChatXonaSinglePage = () => {
     const fetchObyektlar = async () => {
       setFetchingObyektlar(true);
       try {
-        const res = await api.get("/obyektlar/");
+        const res = await api.get(API_ENDPOINTS.OBYEKTLAR.LIST);
         const d = res.data;
         setObyektlar(Array.isArray(d) ? d : (d.results ?? []));
       } catch {
@@ -316,7 +317,7 @@ const ChatXonaSinglePage = () => {
     const fetchUsers = async () => {
       setFetchingUsers(true);
       try {
-        const res = await api.get("/auth/users/");
+        const res = await api.get(API_ENDPOINTS.USERS.LIST);
         const d = res.data;
         setUsers(Array.isArray(d) ? d : (d.results ?? []));
       } catch {
@@ -386,7 +387,7 @@ const ChatXonaSinglePage = () => {
       });
       if (rasmFile) fd.set("rasm", rasmFile);
 
-      await api.post(`chat/xonalar/${id}/ishtirokchi_qoshish/`, fd, {
+      await api.post(API_ENDPOINTS.CHAT_XONALAR.ISHTIROKCHI_QOSHISH(id!), fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       messageApi.success("Ishtirokchi muvaffaqiyatli qo'shildi");
@@ -408,7 +409,7 @@ const ChatXonaSinglePage = () => {
     if (!id) return;
     setLeaveLoading(true);
     try {
-      await api.post(`chat/xonalar/${id}/chiqish/`);
+      await api.post(API_ENDPOINTS.CHAT_XONALAR.CHIQISH(id!));
       messageApi.success("Xonadan muvaffaqiyatli chiqdingiz");
       navigate(-1);
     } catch (err: any) {

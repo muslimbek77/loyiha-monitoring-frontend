@@ -24,6 +24,7 @@ import {
 import type { UploadFile, UploadProps } from "antd";
 import dayjs from "dayjs";
 import api from "@/services/api/axios";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { LAVOZIM_OPTIONS } from "@/shared/components/const/constValues";
 import { usePermissions } from "@/features/auth/hooks/usePermissions";
 
@@ -101,7 +102,7 @@ const XodimlarSinglePage = () => {
   const fetchUser = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`auth/users/${id}`);
+      const res = await api.get(API_ENDPOINTS.USERS.DETAIL(id!));
       setUser(res.data);
     } catch (error) {
       console.error(error);
@@ -112,7 +113,7 @@ const XodimlarSinglePage = () => {
 
   const fetchBoshqarmalar = async () => {
     try {
-      const res = await api.get("core/boshqarmalar/");
+      const res = await api.get(API_ENDPOINTS.BOSHQARMA.LIST);
       setBoshqarmalar(res.data.results);
     } catch (error) {
       console.error(error);
@@ -154,7 +155,7 @@ const XodimlarSinglePage = () => {
       if (newFile?.originFileObj) {
         formData.append("avatar", newFile.originFileObj);
       }
-      const res = await api.put(`auth/users/${id}/`, formData, {
+      const res = await api.put(API_ENDPOINTS.USERS.UPDATE(id!), formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setUser(res.data);
@@ -171,7 +172,7 @@ const XodimlarSinglePage = () => {
   const handleDelete = async () => {
     try {
       setDeleteLoading(true);
-      await api.delete(`auth/users/${id}/`);
+      await api.delete(API_ENDPOINTS.USERS.DELETE(id!));
       message.success("Xodim o'chirildi");
       navigate(-1);
     } catch (error) {

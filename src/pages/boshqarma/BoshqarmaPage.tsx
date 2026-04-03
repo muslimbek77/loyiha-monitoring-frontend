@@ -1,4 +1,4 @@
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Spin, Modal, Form, Input, message } from "antd";
 import {
   PlusOutlined,
@@ -7,6 +7,7 @@ import {
   TrophyOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate } from "react-router-dom";
 import Can from "@/shared/components/guards/Can";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -62,7 +63,7 @@ const BoshqarmaPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/core/boshqarmalar/?all=true");
+      const response = await api.get(API_ENDPOINTS.BOSHQARMA.LIST_ALL);
       const sorted = response.data.sort(
         (a: Boshqarma, b: Boshqarma) => b.reyting - a.reyting,
       );
@@ -76,7 +77,7 @@ const BoshqarmaPage = () => {
 
   const handleCreate = async (values: { nomi: string; qisqa_nomi: string }) => {
     try {
-      await api.post("/core/boshqarmalar/", values);
+      await api.post(API_ENDPOINTS.BOSHQARMA.LIST, values);
       message.success("Boshqarma muvaffaqiyatli qo'shildi");
       form.resetFields();
       setIsModalOpen(false);

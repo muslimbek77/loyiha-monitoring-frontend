@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Spin, Tooltip, message } from "antd";
+import { message } from "antd";
 import {
   SendOutlined,
   PaperClipOutlined,
@@ -48,8 +48,7 @@ export const AddIzohForm = ({ topshiriqId, onSuccess }: AddIzohFormProps) => {
       if (fayl) formData.append("fayl", fayl);
 
       const res = await api.post<Izoh>(
-        // Adjust endpoint key to match your API_ENDPOINTS shape
-        `${API_ENDPOINTS.BAYONNOMALAR.LIST}topshiriqlar/${topshiriqId}/izoh_qoshish/`,
+        API_ENDPOINTS.TOPSHIRIQLAR.IZOH_QOSHISH(topshiriqId),
         formData,
         { headers: { "Content-Type": "multipart/form-data" } },
       );
@@ -96,16 +95,15 @@ export const AddIzohForm = ({ topshiriqId, onSuccess }: AddIzohFormProps) => {
           <div className="flex items-center justify-between px-3 pb-2.5 gap-2">
             <div className="flex items-center gap-2">
               {/* File attach */}
-              <Tooltip title="Fayl biriktirish">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={loading}
-                  className="flex items-center justify-center h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 transition-colors cursor-pointer"
-                >
-                  <PaperClipOutlined />
-                </button>
-              </Tooltip>
+              <button
+                type="button"
+                title="Fayl biriktirish"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading}
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-500"
+              >
+                <PaperClipOutlined />
+              </button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -140,16 +138,7 @@ export const AddIzohForm = ({ topshiriqId, onSuccess }: AddIzohFormProps) => {
                   : "bg-slate-100 text-slate-300 cursor-not-allowed"
               }`}
             >
-              {loading ? (
-                <Spin
-                  indicator={
-                    <LoadingOutlined
-                      style={{ fontSize: 12, color: "white" }}
-                      spin
-                    />
-                  }
-                />
-              ) : (
+              {loading ? <LoadingOutlined style={{ fontSize: 12 }} spin /> : (
                 <SendOutlined style={{ fontSize: 11 }} />
               )}
               Yuborish

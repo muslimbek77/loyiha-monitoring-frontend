@@ -1,8 +1,21 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Row, Col, Spin, Alert } from "antd";
+import { Alert, Spin } from "antd";
+import {
+  ArrowRight,
+  Banknote,
+  Building2,
+  CheckCircle2,
+  ClipboardCheck,
+  FileText,
+  MapPinned,
+  ShieldAlert,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 type DashboardStats = {
   jami_obyektlar: number;
@@ -16,7 +29,8 @@ type DashboardStats = {
   kechikkan_topshiriqlar: number;
   jami_jarimalar: number;
   bu_oy_jarimalar: number;
-  eng_yomon_boshqarma: string;
+  eng_yomon_boshqarma: string | null;
+  eng_yomon_boshqarma_id?: number | null;
   ai_xulosa: string;
 };
 
@@ -29,555 +43,657 @@ type ReytingItem = {
   topshiriqlar_bajarilish: number;
 };
 
-const SECTIONS = [
+type XaritaItem = {
+  id: number;
+  nomi: string;
+  manzil: string;
+  holat: string;
+  bajarilish_foizi: number;
+  rang: string;
+};
+
+type MoliyaStats = {
+  jami_shartnoma: number;
+  jami_sarflangan: number;
+  qoldiq: number;
+};
+
+type AIHisobot = {
+  id: number;
+  sana: string;
+  turi: string;
+  turi_display: string;
+  xulosa: string;
+  created_at: string;
+};
+
+const PROJECT_GOALS = [
   {
-    key: "obyektlar",
-    label: "Obyektlar",
-    icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-        />
-      </svg>
-    ),
-    cards: (s: DashboardStats) => [
-      {
-        title: "Jami obyektlar",
-        value: s.jami_obyektlar,
-        variant: "neutral",
-        href: "/obyekt",
-      },
-      {
-        title: "Muammoli obyektlar",
-        value: s.muammoli_obyektlar,
-        variant: "danger",
-        href: "/obyekt?filter=muammoli",
-      },
-      {
-        title: "Tugatilgan obyektlar",
-        value: s.tugatilgan_obyektlar,
-        variant: "success",
-        href: "/obyekt?filter=tugatilgan",
-      },
-    ],
+    title: "Jarayonlarni yagona panelda boshqarish",
+    description:
+      "Obyekt, hujjat, topshiriq va jarimalarni bir tizimda kuzatib, qaror qabul qilishni tezlashtiradi.",
+    icon: Building2,
   },
   {
-    key: "hujjatlar",
-    label: "Hujjatlar",
-    icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-        />
-      </svg>
-    ),
-    cards: (s: DashboardStats) => [
-      {
-        title: "Jami hujjatlar",
-        value: s.jami_hujjatlar,
-        variant: "neutral",
-        href: "/hujjatlar",
-      },
-      {
-        title: "Kutilmoqda",
-        value: s.kutilmoqda_hujjatlar,
-        variant: "warning",
-        href: "/hujjatlar?filter=kutilmoqda",
-      },
-      {
-        title: "Kechikkan hujjatlar",
-        value: s.kechikkan_hujjatlar,
-        variant: "danger",
-        href: "/hujjatlar?filter=kechikkan",
-      },
-    ],
+    title: "Muammolarni erta aniqlash",
+    description:
+      "Kechikkan topshiriq, muammoli obyekt va kutilayotgan hujjatlar risklar sifatida darhol ko'rsatiladi.",
+    icon: ShieldAlert,
   },
   {
-    key: "topshiriqlar",
-    label: "Topshiriqlar",
-    icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-        />
-      </svg>
-    ),
-    cards: (s: DashboardStats) => [
-      {
-        title: "Jami topshiriqlar",
-        value: s.jami_topshiriqlar,
-        variant: "neutral",
-        href: "/topshiriqlar",
-      },
-      {
-        title: "Bajarilgan",
-        value: s.bajarilgan_topshiriqlar,
-        variant: "success",
-        href: "/topshiriqlar?filter=bajarilgan",
-      },
-      {
-        title: "Kechikkan topshiriqlar",
-        value: s.kechikkan_topshiriqlar,
-        variant: "danger",
-        href: "/topshiriqlar?filter=kechikkan",
-      },
-    ],
-  },
-  {
-    key: "jarimalar",
-    label: "Jarimalar",
-    icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-        />
-      </svg>
-    ),
-    cards: (s: DashboardStats) => [
-      {
-        title: "Jami jarimalar",
-        value: s.jami_jarimalar,
-        variant: "neutral",
-        href: "/jarimalar",
-      },
-      {
-        title: "Bu oy jarimalar (ball)",
-        value: s.bu_oy_jarimalar,
-        variant: "danger",
-        href: "/jarimalar?filter=bu_oy",
-      },
-      {
-        title: "Eng yomon boshqarma",
-        value: s.eng_yomon_boshqarma,
-        variant: "warning",
-        href: "/boshqarma",
-      },
-    ],
+    title: "Ijro intizomini oshirish",
+    description:
+      "Boshqarmalar reytingi va ijro foizlari orqali javobgarlik va monitoring kuchayadi.",
+    icon: TrendingUp,
   },
 ];
-
-const variantConfig: Record<
-  string,
-  {
-    valueCls: string;
-    badgeCls: string;
-    badgeLabel: string;
-    border: string;
-    leftBar: string;
-  }
-> = {
-  neutral: {
-    valueCls: "text-slate-800",
-    badgeCls: "bg-slate-100 text-slate-500",
-    badgeLabel: "Jami",
-    border: "border-slate-200",
-    leftBar: "bg-slate-300",
-  },
-  danger: {
-    valueCls: "text-rose-600",
-    badgeCls: "bg-rose-50 text-rose-500",
-    badgeLabel: "Xavfli",
-    border: "border-slate-200",
-    leftBar: "bg-rose-400",
-  },
-  success: {
-    valueCls: "text-emerald-600",
-    badgeCls: "bg-emerald-50 text-emerald-600",
-    badgeLabel: "Yaxshi",
-    border: "border-slate-200",
-    leftBar: "bg-emerald-400",
-  },
-  warning: {
-    valueCls: "text-amber-600",
-    badgeCls: "bg-amber-50 text-amber-600",
-    badgeLabel: "Ehtiyot",
-    border: "border-slate-200",
-    leftBar: "bg-amber-400",
-  },
-};
-
-// Returns color classes based on reyting score
-const getReytingColor = (reyting: number) => {
-  if (reyting >= 80)
-    return {
-      bar: "bg-emerald-400",
-      text: "text-emerald-600",
-      bg: "bg-emerald-50",
-    };
-  if (reyting >= 50)
-    return { bar: "bg-amber-400", text: "text-amber-600", bg: "bg-amber-50" };
-  return { bar: "bg-rose-400", text: "text-rose-600", bg: "bg-rose-50" };
-};
-
-const getRankIcon = (index: number) => {
-  if (index === 0) return { emoji: "🥇", cls: "text-yellow-500" };
-  if (index === 1) return { emoji: "🥈", cls: "text-slate-400" };
-  if (index === 2) return { emoji: "🥉", cls: "text-amber-600" };
-  return null;
-};
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [reyting, setReyting] = useState<ReytingItem[]>([]);
+  const [xarita, setXarita] = useState<XaritaItem[]>([]);
+  const [moliya, setMoliya] = useState<MoliyaStats | null>(null);
+  const [latestAiHisobot, setLatestAiHisobot] = useState<AIHisobot | null>(null);
   const [loading, setLoading] = useState(true);
-  const [reytingLoading, setReytingLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const { user } = useAuth();
+  const canManageAi = user?.lavozim === "rais" || user?.lavozim === "rais_orinbosari";
+
+  const fetchDashboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [statsRes, reytingRes, xaritaRes, moliyaRes, aiHisobotRes] =
+        await Promise.allSettled([
+          api.get<DashboardStats>(API_ENDPOINTS.DASHBOARD.STATS),
+          api.get<ReytingItem[]>(API_ENDPOINTS.DASHBOARD.REYTING),
+          api.get<XaritaItem[]>(API_ENDPOINTS.DASHBOARD.XARITA),
+          api.get<MoliyaStats>(API_ENDPOINTS.DASHBOARD.MOLIYA),
+          api.get(API_ENDPOINTS.DASHBOARD.AI_HISOBOTLAR, {
+            params: { page_size: 1 },
+          }),
+        ]);
+
+      if (statsRes.status !== "fulfilled") {
+        throw statsRes.reason;
+      }
+
+      setStats(statsRes.value.data);
+
+      if (reytingRes.status === "fulfilled") {
+        setReyting(
+          [...reytingRes.value.data].sort((a, b) => b.reyting - a.reyting),
+        );
+      }
+
+      if (xaritaRes.status === "fulfilled") {
+        setXarita(xaritaRes.value.data);
+      }
+
+      if (moliyaRes.status === "fulfilled") {
+        setMoliya(moliyaRes.value.data);
+      } else {
+        setMoliya(null);
+      }
+
+      if (aiHisobotRes.status === "fulfilled") {
+        const items = aiHisobotRes.value.data?.results ?? aiHisobotRes.value.data ?? [];
+        setLatestAiHisobot(Array.isArray(items) ? items[0] ?? null : null);
+      } else {
+        setLatestAiHisobot(null);
+      }
+    } catch (fetchError) {
+      console.error(fetchError);
+      setError("Bosh sahifa ma'lumotlarini yuklashda xatolik yuz berdi.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await api.get(API_ENDPOINTS.DASHBOARD.STATS);
-        setStats(res.data);
-      } catch (error) {
-        console.error("Statistika olishda xatolik:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    fetchDashboard();
+  }, [fetchDashboard]);
 
-    const fetchReyting = async () => {
-      try {
-        const res = await api.get("/analytics/reyting/");
-        // Sort descending by reyting score
-        const sorted = [...res.data].sort((a, b) => b.reyting - a.reyting);
-        setReyting(sorted);
-      } catch (error) {
-        console.error("Reyting olishda xatolik:", error);
-      } finally {
-        setReytingLoading(false);
-      }
-    };
+  const handleGenerateAi = async () => {
+    try {
+      setAiLoading(true);
+      await api.post(API_ENDPOINTS.DASHBOARD.AI_HISOBOT_GENERATE);
+      await fetchDashboard();
+    } catch (generateError) {
+      console.error(generateError);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
-    fetchStats();
-    fetchReyting();
-  }, []);
+  const kpiCards = useMemo(() => {
+    if (!stats) return [];
+
+    const taskProgress = stats.jami_topshiriqlar
+      ? Math.round((stats.bajarilgan_topshiriqlar / stats.jami_topshiriqlar) * 100)
+      : 0;
+
+    return [
+      {
+        title: "Faol monitoring obyektlari",
+        value: formatNumber(stats.jami_obyektlar),
+        tone: "sky",
+        description: `${stats.tugatilgan_obyektlar} ta obyekt yakunlangan`,
+        action: "/obyekt",
+        icon: Building2,
+      },
+      {
+        title: "Nazorat talab qilayotgan hujjatlar",
+        value: formatNumber(stats.kutilmoqda_hujjatlar),
+        tone: "amber",
+        description: `${stats.kechikkan_hujjatlar} ta hujjat muddatdan o'tgan`,
+        action: "/hujjatlar",
+        icon: FileText,
+      },
+      {
+        title: "Ijro intizomi",
+        value: `${taskProgress}%`,
+        tone: taskProgress >= 70 ? "emerald" : "rose",
+        description: `${stats.bajarilgan_topshiriqlar}/${stats.jami_topshiriqlar} topshiriq bajarilgan`,
+        action: "/topshiriqlar",
+        icon: ClipboardCheck,
+      },
+      {
+        title: "Jarima bosimi",
+        value: formatNumber(stats.bu_oy_jarimalar),
+        tone: stats.bu_oy_jarimalar > 0 ? "rose" : "slate",
+        description: "Joriy oy bo'yicha jarima ballari",
+        action: "/jarimalar",
+        icon: ShieldAlert,
+      },
+    ];
+  }, [stats]);
+
+  const obyektInsight = useMemo(() => {
+    const total = xarita.length;
+    if (!total) {
+      return {
+        active: 0,
+        problematic: 0,
+        completed: 0,
+        averageProgress: 0,
+      };
+    }
+
+    const completed = xarita.filter((item) => item.holat === "tugatilgan").length;
+    const problematic = xarita.filter((item) => item.holat === "muammoli").length;
+    const averageProgress = Math.round(
+      xarita.reduce((sum, item) => sum + (item.bajarilish_foizi || 0), 0) / total,
+    );
+
+    return {
+      active: total,
+      problematic,
+      completed,
+      averageProgress,
+    };
+  }, [xarita]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-50">
-        <Spin size="large" />
+      <div className="app-loader">
+        <div className="app-loader__ring" />
+        <p className="text-sm text-slate-500">Bosh sahifa yuklanmoqda...</p>
       </div>
     );
   }
 
-  if (!stats) {
+  if (error || !stats) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <Alert message="Ma'lumot topilmadi" type="error" showIcon />
+      <div className="page-surface p-6">
+        <Alert
+          message="Bosh sahifa ochilmadi"
+          description={error || "Dashboard statistikasi topilmadi."}
+          type="error"
+          showIcon
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
-      {/* Page header */}
-      <div className="mb-8">
-        <p className="text-[11px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-1">
-          Monitoring tizimi
-        </p>
-        <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
-          Boshqaruv paneli
-        </h1>
-      </div>
+    <div className="space-y-6">
+      <section className="page-surface overflow-hidden p-6 sm:p-8">
+        <div className="grid gap-8 lg:grid-cols-[1.5fr_0.9fr]">
+          <div>
+            <p className="page-kicker">Loyiha monitoring markazi</p>
+            <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+              Loyihalarning holati, risklari va ijro natijalarini yagona bosh sahifada ko'rsatish
+            </h1>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600">
+              Ushbu panelning maqsadi obyektlar, hujjatlar, topshiriqlar, boshqarma reytingi va jarimalar bo'yicha real vaziyatni bir qarashda ko'rsatishdir. API ma'lumotlari foydalanuvchi qaror qabul qilishi oson bo'ladigan bloklarga ajratildi.
+            </p>
 
-      <div className="space-y-8">
-        {SECTIONS.map((section) => (
-          <div key={section.key}>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-slate-400">{section.icon}</span>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                {section.label}
-              </span>
-              <div className="flex-1 h-px bg-slate-200 ml-1" />
-            </div>
-            <Row gutter={[14, 14]}>
-              {section.cards(stats).map((card) => (
-                <Col xs={24} md={8} key={card.title}>
-                  <StatCard
-                    title={card.title}
-                    value={card.value}
-                    variant={card.variant}
-                    href={card.href}
-                  />
-                </Col>
-              ))}
-            </Row>
-          </div>
-        ))}
-
-        {/* Reyting */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-slate-400">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Boshqarmalar reytingi
-            </span>
-            <div className="flex-1 h-px bg-slate-200 ml-1" />
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            {reytingLoading ? (
-              <div className="flex items-center justify-center h-32">
-                <Spin />
-              </div>
-            ) : reyting.length === 0 ? (
-              <div className="p-5 text-center text-slate-400 text-sm">
-                Ma'lumot topilmadi
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {/* Table header */}
-                <div className="grid grid-cols-12 gap-3 px-5 py-3 bg-slate-50">
-                  <div className="col-span-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    #
-                  </div>
-                  <div className="col-span-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    Boshqarma
-                  </div>
-                  <div className="col-span-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    Reyting
-                  </div>
-                  <div className="col-span-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 text-center">
-                    Jarimalar
-                  </div>
-                </div>
-
-                {/* Table rows */}
-                {reyting.map((item, index) => {
-                  const colors = getReytingColor(item.reyting);
-                  const rankIcon = getRankIcon(index);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => navigate(`/boshqarma/${item.id}`)}
-                      className="grid grid-cols-12 gap-3 px-5 py-3.5 items-center hover:bg-slate-50 transition-colors duration-150 cursor-pointer"
-                    >
-                      {/* Rank */}
-                      <div className="col-span-1 flex items-center">
-                        {rankIcon ? (
-                          <span className="text-base leading-none">
-                            {rankIcon.emoji}
-                          </span>
-                        ) : (
-                          <span className="text-xs font-semibold text-slate-400">
-                            {index + 1}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Name */}
-                      <div className="col-span-4">
-                        <p className="text-sm font-medium text-slate-700 leading-tight">
-                          {item.nomi}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          {item.qisqa_nomi}
-                        </p>
-                      </div>
-
-                      {/* Reyting bar */}
-                      <div className="col-span-4">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
-                              style={{
-                                width: `${Math.min(item.reyting, 100)}%`,
-                              }}
-                            />
-                          </div>
-                          <span
-                            className={`text-xs font-bold tabular-nums ${colors.text} min-w-[36px] text-right`}
-                          >
-                            {item.reyting.toFixed(1)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Jarimalar */}
-                      <div className="col-span-3 text-center">
-                        <span
-                          className={`inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            item.jarimalar_soni > 0
-                              ? "bg-rose-50 text-rose-500"
-                              : "bg-slate-100 text-slate-400"
-                          }`}
-                        >
-                          {item.jarimalar_soni}
-                        </span>
-                      </div>
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {PROJECT_GOALS.map((goal) => {
+                const Icon = goal.icon;
+                return (
+                  <div key={goal.title} className="section-card p-5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
+                      <Icon className="h-5 w-5" />
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* AI Xulosa */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-slate-400">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              AI Xulosa
-            </span>
-            <div className="flex-1 h-px bg-slate-200 ml-1" />
+                    <h2 className="mt-4 text-base font-semibold text-slate-900">
+                      {goal.title}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      {goal.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <div className="flex gap-3 items-center">
-              <div className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-                <svg
-                  className="w-3.5 h-3.5 text-violet-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                  />
-                </svg>
+          <div className="section-card bg-slate-950 p-6 text-white shadow-[0_30px_80px_rgba(15,23,42,0.3)]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-sky-300">
+                <MapPinned className="h-5 w-5" />
               </div>
-              <p className="text-slate-600 text-sm leading-relaxed">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-300/80">
+                  Operativ holat
+                </p>
+                <h2 className="mt-1 text-lg font-semibold">
+                  Monitoring xulosasi
+                </h2>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <SummaryRow
+                label="Muammoli obyektlar"
+                value={formatNumber(stats.muammoli_obyektlar)}
+              />
+              <SummaryRow
+                label="Kechikkan hujjatlar"
+                value={formatNumber(stats.kechikkan_hujjatlar)}
+              />
+              <SummaryRow
+                label="Kechikkan topshiriqlar"
+                value={formatNumber(stats.kechikkan_topshiriqlar)}
+              />
+              <SummaryRow
+                label="Eng past reytingli boshqarma"
+                value={stats.eng_yomon_boshqarma || "-"}
+              />
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">
+                AI tavsiya
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-200/90">
                 {stats.ai_xulosa}
               </p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-4">
+        {kpiCards.map((card) => (
+          <KpiCard
+            key={card.title}
+            title={card.title}
+            value={card.value}
+            description={card.description}
+            tone={card.tone}
+            icon={card.icon}
+            onClick={() => navigate(card.action)}
+          />
+        ))}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.25fr_0.95fr]">
+        <div className="section-card p-6">
+          <div className="page-header mb-6">
+            <p className="page-kicker">Jarayon xaritasi</p>
+            <h2 className="page-title text-2xl">Loyihaning asosiy oqimlari</h2>
+            <p className="page-subtitle">
+              API’dan kelayotgan obyekt, hujjat va topshiriq ko'rsatkichlari loyiha maqsadiga xizmat qiladigan asosiy uchta monitoring yo'nalishini beradi.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <ProcessCard
+              title="1. Obyektlar holati"
+              value={`${obyektInsight.averageProgress}%`}
+              description={`${obyektInsight.active} ta obyekt, ${obyektInsight.problematic} tasi risk holatda`}
+              tone="sky"
+              actionLabel="Obyektlarni ko'rish"
+              onClick={() => navigate("/obyekt")}
+            />
+            <ProcessCard
+              title="2. Hujjat intizomi"
+              value={formatNumber(stats.jami_hujjatlar)}
+              description={`${stats.kutilmoqda_hujjatlar} ta ko'rib chiqilishi kerak`}
+              tone="amber"
+              actionLabel="Hujjatlar bo'limi"
+              onClick={() => navigate("/hujjatlar")}
+            />
+            <ProcessCard
+              title="3. Ijro nazorati"
+              value={formatNumber(stats.jami_topshiriqlar)}
+              description={`${stats.bajarilgan_topshiriqlar} ta topshiriq bajarilgan`}
+              tone="emerald"
+              actionLabel="Topshiriqlar bo'limi"
+              onClick={() => navigate("/topshiriqlar")}
+            />
+          </div>
+
+          <div className="mt-6 rounded-3xl bg-slate-50 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Boshqaruv tavsiyasi
+                </p>
+                <h3 className="mt-2 text-lg font-semibold text-slate-900">
+                  Risk yuqori joylarga avval reaksiya bering
+                </h3>
+              </div>
+              {stats.eng_yomon_boshqarma_id ? (
+                <button
+                  onClick={() => navigate(`/boshqarma/${stats.eng_yomon_boshqarma_id}`)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
+                >
+                  Riskli boshqarma
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              Muammoli obyektlar, kechikkan topshiriqlar va jarimalar bir joyda ko'rsatilgani sababli bosh sahifa endi nazorat emas, qaror qabul qilish paneli vazifasini bajaradi.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="section-card p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="page-kicker">AI monitoring</p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                  Sun'iy tahlil holati
+                </h2>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Dashboard AI xulosasi
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                {stats.ai_xulosa}
+              </p>
+            </div>
+
+            <div className="mt-4 rounded-3xl border border-slate-200 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  So'nggi AI hisobot
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => fetchDashboard()}
+                    className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                  >
+                    Yangilash
+                  </button>
+                  {canManageAi ? (
+                    <button
+                      onClick={handleGenerateAi}
+                      disabled={aiLoading}
+                      className="rounded-xl bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50"
+                    >
+                      {aiLoading ? "Generatsiya..." : "AI hisobot yaratish"}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              {latestAiHisobot ? (
+                <>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span className="rounded-full bg-violet-50 px-2.5 py-1 font-semibold text-violet-600">
+                      {latestAiHisobot.turi_display}
+                    </span>
+                    <span>{formatDate(latestAiHisobot.sana)}</span>
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
+                    {latestAiHisobot.xulosa}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-3 text-sm leading-7 text-slate-500">
+                  Backend AI endpoint ishlayapti, lekin saqlangan hisobot hali topilmadi yoki joriy foydalanuvchi uchun qaytmadi.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="section-card p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="page-kicker">Boshqarmalar reytingi</p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                  Ijro samaradorligi
+                </h2>
+              </div>
+              <button
+                onClick={() => navigate("/boshqarma")}
+                className="text-sm font-medium text-sky-700 transition hover:text-sky-900"
+              >
+                Barchasini ko'rish
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {reyting.slice(0, 5).map((item, index) => (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(`/boshqarma/${item.id}`)}
+                  className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 px-4 py-3 text-left transition hover:border-sky-200 hover:bg-sky-50/40"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600">
+                    {index + 1}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">
+                      {item.nomi}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Jarima: {item.jarimalar_soni} • Ijro:{" "}
+                      {item.topshiriqlar_bajarilish}%
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-slate-900">
+                      {item.reyting.toFixed(1)}
+                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                      reyting
+                    </p>
+                  </div>
+                </button>
+              ))}
+
+              {!reyting.length && (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+                  Reyting ma'lumotlari topilmadi.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="section-card p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                <Banknote className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="page-kicker">Moliyaviy ko'rinish</p>
+                <h2 className="mt-1 text-xl font-semibold text-slate-900">
+                  Kuzatuvchi uchun jamlanma
+                </h2>
+              </div>
+            </div>
+
+            {moliya ? (
+              <div className="mt-6 grid gap-3">
+                <FinanceRow label="Jami shartnoma" value={formatCurrency(moliya.jami_shartnoma)} />
+                <FinanceRow label="Jami sarflangan" value={formatCurrency(moliya.jami_sarflangan)} />
+                <FinanceRow label="Qoldiq" value={formatCurrency(moliya.qoldiq)} highlight />
+              </div>
+            ) : (
+              <div className="mt-6 rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-sm leading-6 text-slate-500">
+                Bu blok faqat ruxsat berilgan foydalanuvchilar uchun moliyaviy API ma'lumotlari mavjud bo'lsa ko'rsatiladi.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
 
-const StatCard = ({
+const KpiCard = ({
   title,
   value,
-  variant = "neutral",
-  href,
+  description,
+  tone,
+  icon: Icon,
+  onClick,
 }: {
   title: string;
-  value: number | string;
-  variant?: string;
-  href?: string;
+  value: string;
+  description: string;
+  tone: "sky" | "amber" | "emerald" | "rose" | "slate";
+  icon: React.ComponentType<{ className?: string }>;
+  onClick: () => void;
 }) => {
-  const navigate = useNavigate();
-  const cfg = variantConfig[variant] ?? variantConfig.neutral;
-
-  const handleClick = () => {
-    if (href) navigate(href);
-  };
+  const toneClass = {
+    sky: "bg-sky-50 text-sky-700 border-sky-100",
+    amber: "bg-amber-50 text-amber-700 border-amber-100",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    rose: "bg-rose-50 text-rose-700 border-rose-100",
+    slate: "bg-slate-100 text-slate-700 border-slate-200",
+  }[tone];
 
   return (
-    <div
-      onClick={handleClick}
-      className={`
-        relative bg-white rounded-2xl border ${cfg.border}
-        px-5 pt-5 pb-5 shadow-sm overflow-hidden
-        hover:shadow-md transition-all duration-200
-        ${href ? "cursor-pointer hover:scale-[1.02] active:scale-[0.99]" : ""}
-      `}
+    <button
+      onClick={onClick}
+      className="section-card flex w-full items-start justify-between gap-4 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
     >
-      <div
-        className={`absolute left-0 top-4 bottom-4 w-[3px] rounded-r-full ${cfg.leftBar}`}
-      />
-
-      <div className="flex items-start justify-between mb-3">
-        <p className="text-xs text-slate-500 leading-snug max-w-[65%]">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
           {title}
         </p>
-        <span
-          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.badgeCls}`}
-        >
-          {cfg.badgeLabel}
-        </span>
+        <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+          {value}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
       </div>
+      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${toneClass}`}>
+        <Icon className="h-5 w-5" />
+      </div>
+    </button>
+  );
+};
 
-      <p className={`text-3xl font-bold tabular-nums ${cfg.valueCls}`}>
+const ProcessCard = ({
+  title,
+  value,
+  description,
+  tone,
+  actionLabel,
+  onClick,
+}: {
+  title: string;
+  value: string;
+  description: string;
+  tone: "sky" | "amber" | "emerald";
+  actionLabel: string;
+  onClick: () => void;
+}) => {
+  const toneClass = {
+    sky: "from-sky-500/10 to-sky-500/0 border-sky-100",
+    amber: "from-amber-500/10 to-amber-500/0 border-amber-100",
+    emerald: "from-emerald-500/10 to-emerald-500/0 border-emerald-100",
+  }[tone];
+
+  return (
+    <div className={`rounded-3xl border bg-gradient-to-br ${toneClass} p-5`}>
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
         {value}
       </p>
-
-      {href && (
-        <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg
-            className="w-3.5 h-3.5 text-slate-300"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </div>
-      )}
+      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+      <button
+        onClick={onClick}
+        className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-sky-700 transition hover:text-sky-900"
+      >
+        {actionLabel}
+        <ArrowRight className="h-4 w-4" />
+      </button>
     </div>
   );
 };
+
+const SummaryRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+    <span className="text-sm text-slate-300">{label}</span>
+    <span className="text-sm font-semibold text-white">{value}</span>
+  </div>
+);
+
+const FinanceRow = ({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) => (
+  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+    <span className="text-sm text-slate-500">{label}</span>
+    <span className={`text-sm font-semibold ${highlight ? "text-emerald-700" : "text-slate-900"}`}>
+      {value}
+    </span>
+  </div>
+);
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("uz-UZ", {
+    style: "currency",
+    currency: "UZS",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+
+const formatNumber = (value: number | string) =>
+  new Intl.NumberFormat("uz-UZ").format(Number(value || 0));
+
+const formatDate = (value: string) =>
+  new Date(value).toLocaleDateString("uz-UZ", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 
 export default DashboardPage;

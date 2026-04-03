@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, Tooltip, Spin, Input, Select } from "antd";
+import { Spin, Input, Select } from "antd";
 import {
   SearchOutlined,
   FilterOutlined,
@@ -14,6 +14,7 @@ import { API_ENDPOINTS } from "@/services/api/endpoints";
 
 const { Search } = Input;
 const { Option } = Select;
+const PAGE_SIZE = 10;
 
 const statusConfig = {
   kechikkan: { icon: <ExclamationCircleOutlined />, antColor: "red" },
@@ -60,6 +61,10 @@ const TopshiriqlarPage = () => {
     return matchSearch && matchHolat;
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText, filterHolat]);
+
   const stats = {
     kechikkan: data.filter((d) => d.holat === "kechikkan").length,
     jarayonda: data.filter((d) => d.holat === "jarayonda").length,
@@ -105,118 +110,7 @@ const TopshiriqlarPage = () => {
     },
   ];
 
-  const columns = [
-    {
-      title: "Bayonnoma №",
-      dataIndex: "bayonnoma_raqami",
-      key: "bayonnoma_raqami",
-      width: 150,
-      render: (val) => (
-        <span className="font-mono text-xs font-semibold text-slate-800 bg-gradient-to-br from-slate-100 to-slate-200 px-2.5 py-1 rounded-md border border-slate-300 tracking-wide">
-          {val}
-        </span>
-      ),
-    },
-    {
-      title: "Boshqarma",
-      dataIndex: "ijrochi_boshqarma_qisqa_nomi",
-      key: "ijrochi_boshqarma_qisqa_nomi",
-      width: 120,
-      render: (val) => (
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-300/50 tracking-wide">
-          {val}
-        </div>
-      ),
-    },
-    {
-      title: "Band №",
-      dataIndex: "band_raqami",
-      key: "band_raqami",
-      width: 90,
-      align: "center",
-      render: (val) => (
-        <span className="text-slate-400 font-semibold text-sm font-mono">
-          #{val}
-        </span>
-      ),
-    },
-    {
-      title: "Mazmun",
-      dataIndex: "mazmun",
-      key: "mazmun",
-      render: (val) => (
-        <span className="text-slate-700 text-sm leading-relaxed font-normal">
-          {val}
-        </span>
-      ),
-    },
-    {
-      title: "Muddat",
-      dataIndex: "muddat",
-      key: "muddat",
-      width: 140,
-      render: (val) => (
-        <span className="flex items-center gap-1.5 text-slate-600 text-sm font-semibold">
-          <ClockCircleOutlined className="text-slate-400 text-xs" />
-          {val}
-        </span>
-      ),
-    },
-    {
-      title: "Holat",
-      dataIndex: "holat",
-      key: "holat",
-      width: 140,
-      render: (val, row) => {
-        const cfg = statusConfig[val] || statusConfig.jarayonda;
-        const styleMap = {
-          kechikkan:
-            "bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border-rose-200",
-          jarayonda:
-            "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200",
-          bajarildi:
-            "bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200",
-        };
-        return (
-          <span
-            className={`inline-flex items-center gap-1.5 border rounded-full px-3 py-0.5 text-xs font-semibold whitespace-nowrap ${styleMap[val] || styleMap.jarayonda}`}
-          >
-            {cfg.icon}
-            {row.holat_display}
-          </span>
-        );
-      },
-    },
-    {
-      title: "Qolgan kunlar",
-      dataIndex: "qolgan_kunlar",
-      key: "qolgan_kunlar",
-      width: 140,
-      align: "center",
-      render: (val, row) => {
-        if (row.bajarildi)
-          return (
-            <span className="inline-flex items-center gap-1 text-green-600 font-semibold text-xs">
-              <CheckCircleOutlined />
-              Tugallandi
-            </span>
-          );
-        if (val < 0)
-          return (
-            <Tooltip title={`${Math.abs(val)} kun kechikdi`}>
-              <span className="inline-block text-red-600 font-bold text-sm bg-gradient-to-br from-rose-50 to-rose-100 border border-rose-200 px-2.5 py-0.5 rounded-lg cursor-help">
-                {val} kun
-              </span>
-            </Tooltip>
-          );
-        return (
-          <span className="inline-block text-blue-600 font-bold text-sm bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 px-2.5 py-0.5 rounded-lg">
-            +{val} kun
-          </span>
-        );
-      },
-    },
-  ];
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-sky-50 rounded-2xl font-sans">
@@ -291,91 +185,142 @@ const TopshiriqlarPage = () => {
 
         {/* Table */}
         <div className="bg-white/92 backdrop-blur-lg rounded-2xl border border-slate-200 shadow-md shadow-indigo-100/50 overflow-hidden">
-          <style>{`
-            .tsh-table .ant-table-thead > tr > th {
-              background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
-              color: #64748b !important;
-              font-size: 11px !important;
-              font-weight: 700 !important;
-              text-transform: uppercase !important;
-              letter-spacing: 0.07em !important;
-              border-bottom: 1px solid #e2e8f0 !important;
-              padding: 13px 16px !important;
-            }
-            .tsh-table .ant-table-tbody > tr > td {
-              padding: 13px 16px !important;
-              border-bottom: 1px solid #f1f5f9 !important;
-              transition: background 0.15s ease !important;
-            }
-            .tsh-table .ant-table-tbody > tr:hover > td {
-              background: #f5f3ff !important;
-            }
-            .tsh-table .ant-table-tbody > tr:last-child > td {
-              border-bottom: none !important;
-            }
-            .tsh-table .ant-pagination {
-              padding: 14px 20px !important;
-              margin: 0 !important;
-              background: #fafafa;
-              border-top: 1px solid #f1f5f9;
-            }
-            .tsh-table .ant-pagination-item-active {
-              background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
-              border-color: transparent !important;
-              border-radius: 8px !important;
-            }
-            .tsh-table .ant-pagination-item-active a {
-              color: #fff !important;
-              font-weight: 700 !important;
-            }
-            .tsh-table .ant-pagination-item {
-              border-radius: 8px !important;
-              font-weight: 600 !important;
-            }
-            .tsh-table .ant-table-row-kechikkan {
-              background: rgba(254,242,242,0.5) !important;
-            }
-          `}</style>
           <Spin spinning={loading} tip="Yuklanmoqda...">
-            <Table
-              className="tsh-table"
-              dataSource={data}
-              columns={columns}
-              rowKey="id"
-              size="middle"
-              pagination={{
-                current: currentPage,
-                onChange: (page) => setCurrentPage(page),
-                pageSize: 10,
-                total: total,
-                showTotal: (total, range) => (
-                  <span className="text-slate-400 text-xs font-medium">
-                    {range[0]}–{range[1]} /{" "}
+            {filtered.length === 0 ? (
+              <div className="py-16 text-center text-slate-300">
+                <FileTextOutlined className="mb-3 text-4xl opacity-35" />
+                <p className="m-0 text-sm font-medium text-slate-400">
+                  Topshiriqlar topilmadi
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 text-left text-[11px] font-bold uppercase tracking-[0.07em] text-slate-500">
+                        <th className="px-4 py-3">Bayonnoma №</th>
+                        <th className="px-4 py-3">Boshqarma</th>
+                        <th className="px-4 py-3">Band №</th>
+                        <th className="px-4 py-3">Mazmun</th>
+                        <th className="px-4 py-3">Muddat</th>
+                        <th className="px-4 py-3">Holat</th>
+                        <th className="px-4 py-3">Qolgan kunlar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((row) => {
+                        const cfg = statusConfig[row.holat] || statusConfig.jarayonda;
+                        const styleMap = {
+                          kechikkan:
+                            "bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border-rose-200",
+                          jarayonda:
+                            "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200",
+                          bajarildi:
+                            "bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200",
+                        };
+                        return (
+                          <tr
+                            key={row.id}
+                            onClick={() => navigate(`/topshiriqlar/${row.id}`)}
+                            className={`cursor-pointer border-b border-slate-100 transition hover:bg-violet-50 ${
+                              row.is_kechikkan ? "bg-rose-50/50" : ""
+                            }`}
+                          >
+                            <td className="px-4 py-3">
+                              <span className="rounded-md border border-slate-300 bg-gradient-to-br from-slate-100 to-slate-200 px-2.5 py-1 font-mono text-xs font-semibold tracking-wide text-slate-800">
+                                {row.bayonnoma_raqami}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-500 text-sm font-bold tracking-wide text-white shadow-md shadow-indigo-300/50">
+                                {row.ijrochi_boshqarma_qisqa_nomi}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="font-mono text-sm font-semibold text-slate-400">
+                                #{row.band_raqami}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-sm leading-relaxed text-slate-700">
+                                {row.mazmun}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+                                <ClockCircleOutlined className="text-xs text-slate-400" />
+                                {row.muddat}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex whitespace-nowrap rounded-full border px-3 py-0.5 text-xs font-semibold ${styleMap[row.holat] || styleMap.jarayonda}`}
+                              >
+                                <span className="mr-1.5">{cfg.icon}</span>
+                                {row.holat_display}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.bajarildi ? (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-600">
+                                  <CheckCircleOutlined />
+                                  Tugallandi
+                                </span>
+                              ) : row.qolgan_kunlar < 0 ? (
+                                <span
+                                  title={`${Math.abs(row.qolgan_kunlar)} kun kechikdi`}
+                                  className="inline-block cursor-help rounded-lg border border-rose-200 bg-gradient-to-br from-rose-50 to-rose-100 px-2.5 py-0.5 text-sm font-bold text-red-600"
+                                >
+                                  {row.qolgan_kunlar} kun
+                                </span>
+                              ) : (
+                                <span className="inline-block rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 px-2.5 py-0.5 text-sm font-bold text-blue-600">
+                                  +{row.qolgan_kunlar} kun
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3">
+                  <span className="text-xs font-medium text-slate-400">
+                    {Math.min((currentPage - 1) * PAGE_SIZE + 1, total)}–
+                    {Math.min(currentPage * PAGE_SIZE, total)} /{" "}
                     <strong className="text-slate-600">{total}</strong> ta
                     topshiriq
                   </span>
-                ),
-                showSizeChanger: false,
-              }}
-              rowClassName={(record) =>
-                record.is_kechikkan ? "ant-table-row-kechikkan" : ""
-              }
-              scroll={{ x: 860 }}
-              onRow={(record) => ({
-                onClick: () => navigate(`/topshiriqlar/${record.id}`),
-                style: { cursor: "pointer" },
-              })}
-              locale={{
-                emptyText: (
-                  <div className="py-16 text-center text-slate-300">
-                    <FileTextOutlined className="text-4xl mb-3 opacity-35" />
-                    <p className="m-0 text-sm font-medium text-slate-400">
-                      Topshiriqlar topilmadi
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((page) => Math.max(1, page - 1))
+                      }
+                      disabled={currentPage === 1}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Oldingi
+                    </button>
+                    <span className="text-sm text-slate-500">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((page) => Math.min(totalPages, page + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Keyingi
+                    </button>
                   </div>
-                ),
-              }}
-            />
+                </div>
+              </>
+            )}
           </Spin>
         </div>
       </div>
