@@ -76,6 +76,8 @@ export const API_ENDPOINTS = {
     MENING: "/bayonnomalar/topshiriqlar/mening/",
     IZOH_QOSHISH: (id: string | number) =>
       `/bayonnomalar/topshiriqlar/${id}/izoh_qoshish/`,
+    TASDIQLASH: (id: string | number) =>
+      `/bayonnomalar/topshiriqlar/${id}/tasdiqlash/`,
   },
 
   JARIMALAR: {
@@ -87,6 +89,7 @@ export const API_ENDPOINTS = {
   CHAT_XONALAR: {
     LIST: "/chat/xonalar/",
     DETAIL: (id: string | number) => `/chat/xonalar/${id}/`,
+    SOZLAMALAR: (id: string | number) => `/chat/xonalar/${id}/sozlamalar/`,
     XABARLAR: (id: string | number) => `/chat/xonalar/${id}/xabarlar/`,
     XABAR_YUBORISH: (id: string | number) => `/chat/xonalar/${id}/xabar_yuborish/`,
     ISHTIROKCHI_QOSHISH: (id: string | number) =>

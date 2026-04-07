@@ -179,14 +179,14 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
               name="boshqarma"
               label={
                 <span className="text-sm font-medium text-gray-700">
-                  Boshqarma
+                  Kategoriya
                 </span>
               }
               // rules={[{ required: true, message: "Boshqarmani tanlang" }]}
             >
               <Select
                 allowClear
-                placeholder="Boshqarmani tanlang"
+                placeholder="Kategoriyani tanlang"
                 size="large"
                 loading={boshqarmaLoading}
                 suffixIcon={
