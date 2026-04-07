@@ -11,9 +11,35 @@ import {
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
-import { LAVOZIM_OPTIONS } from "@/shared/components/const/constValues";
 
-const { Option } = Select;
+const LAVOZIM_GROUP_OPTIONS = [
+  {
+    label: "Rahbariyat",
+    options: [
+      { value: "rais", label: "Rais" },
+      { value: "rais_orinbosari", label: "Rais o'rinbosari" },
+    ],
+  },
+  {
+    label: "Boshqarma ichki bo'limi",
+    options: [
+      { value: "boshqarma_boshi", label: "Bosh bo'limi" },
+      {
+        value: "boshqarma_boshligi_orinbosari",
+        label: "Bo'lim o'rinbosari",
+      },
+      { value: "yetakchi_muhandis", label: "Yetakchi muhandis" },
+      { value: "muhandis", label: "Muhandis" },
+    ],
+  },
+  {
+    label: "Ishlab chiqarish xodimlari",
+    options: [
+      { value: "uchastka_rahbari", label: "Uchastka rahbari" },
+      { value: "xodim", label: "Prorab" },
+    ],
+  },
+];
 
 interface Boshqarma {
   id: number;
@@ -95,7 +121,7 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
             <UserAddOutlined className="text-blue-500 text-base" />
           </div>
           <span className="text-base font-semibold text-gray-800">
-            Yangi xodim qo'shish
+            Yangi hodim qo'shish
           </span>
         </div>
       }
@@ -202,13 +228,11 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
               }
               rules={[{ required: true, message: "Lavozimni tanlang" }]}
             >
-              <Select placeholder="Lavozimni tanlang" size="large">
-                {LAVOZIM_OPTIONS.map((l) => (
-                  <Option key={l.value} value={l.value}>
-                    {l.label}
-                  </Option>
-                ))}
-              </Select>
+              <Select
+                placeholder="Lavozimni tanlang"
+                size="large"
+                options={LAVOZIM_GROUP_OPTIONS}
+              />
             </Form.Item>
           </Col>
           <Col span={12}>

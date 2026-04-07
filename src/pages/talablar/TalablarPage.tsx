@@ -177,7 +177,8 @@ const TalabTable = ({
   const [page, setPage] = useState(1);
   const [notifApi, contextHolder] = notification.useNotification();
 
-  const { role } = usePermissions();
+  const { can, role } = usePermissions();
+
 
   const setLoadingKey = (id: number, action: string, val: boolean) =>
     setActionLoading((prev) => ({ ...prev, [`${id}_${action}`]: val }));
@@ -394,7 +395,7 @@ const TalabTable = ({
                             </td>
                             {showActions ? (
                               <td className="px-4 py-3">
-                                {role !== "rais" && hasAny ? (
+                                {can("canAnswerTalab") && role !== "rais" && hasAny ? (
                                   <div
                                     className="flex justify-end gap-1"
                                     onClick={(e) => e.stopPropagation()}
@@ -500,7 +501,6 @@ const Talablar = () => {
   const [kategoriyalar, setKategoriyalar] = useState<Kategoriya[]>([]);
   const [formDataLoading, setFormDataLoading] = useState(false);
   const [kategoriyaLoading, setKategoriyaLoading] = useState(false);
-  const { role } = usePermissions();
 
   useEffect(() => {
     api
@@ -677,9 +677,9 @@ const Talablar = () => {
     {
       key: "kelgan",
       label: (
-        <span className="flex items-center gap-1.5">
-          <InboxOutlined />
-          Kelgan
+          <span className="flex items-center gap-1.5">
+            <InboxOutlined />
+          Kelib tushgan
           <TabCount value={kelgan.length} tone="green" />
         </span>
       ),
@@ -875,18 +875,6 @@ const Talablar = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {role !== "rais" && (
-              <Can action="canCreate">
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={() => setModalOpen(true)}
-                  className="bg-blue-500 hover:bg-blue-600 border-0 shadow-sm rounded-lg!"
-                >
-                  Yangi talab
-                </Button>
-              </Can>
-            )}
             <Can action="canCreateTalab">
               <Button
                 type="primary"
@@ -894,7 +882,7 @@ const Talablar = () => {
                 onClick={() => setModalOpen(true)}
                 className="bg-blue-500 hover:bg-blue-600 border-0 shadow-sm rounded-lg!"
               >
-                Yangi talab
+                Talab yaratish
               </Button>
             </Can>
           </div>
@@ -902,7 +890,7 @@ const Talablar = () => {
       </div>
 
       {/* Stats — only for canCreate role */}
-      <Can action="canCreate">
+      <Can action="canSeeTalablar">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
             {

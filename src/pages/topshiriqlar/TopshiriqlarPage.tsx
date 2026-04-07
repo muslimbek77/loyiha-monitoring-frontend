@@ -1,192 +1,222 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Spin, Input, Select } from "antd";
+import { Spin, Select } from "antd";
 import {
-  SearchOutlined,
-  FilterOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   FileTextOutlined,
+  FilterOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 
-const { Search } = Input;
-const { Option } = Select;
+type TopshiriqRow = {
+  id: number;
+  bayonnoma_raqami: string;
+  ijrochi_boshqarma_nomi: string;
+  ijrochi_xodim_fio?: string | null;
+  band_raqami: string | number;
+  mazmun: string;
+  muddat: string;
+  holat: string;
+  holat_display: string;
+  holat_ui?: string;
+  holat_ui_display?: string;
+  bajarildi: boolean;
+  is_kechikkan: boolean;
+  qolgan_kunlar: number;
+};
+
 const PAGE_SIZE = 10;
 
 const statusConfig = {
-  kechikkan: { icon: <ExclamationCircleOutlined />, antColor: "red" },
-  jarayonda: { icon: <ClockCircleOutlined />, antColor: "blue" },
-  bajarildi: { icon: <CheckCircleOutlined />, antColor: "green" },
+  kechikkan: { icon: <ExclamationCircleOutlined />, badge: "text-rose-700 border-rose-200 bg-rose-50" },
+  jarayonda: { icon: <ClockCircleOutlined />, badge: "text-blue-700 border-blue-200 bg-blue-50" },
+  tasdiqlashda: { icon: <ClockCircleOutlined />, badge: "text-amber-700 border-amber-200 bg-amber-50" },
+  bajarildi: { icon: <CheckCircleOutlined />, badge: "text-green-700 border-green-200 bg-green-50" },
+};
+
+const getHolat = (row: TopshiriqRow) => row.holat_ui ?? row.holat;
+const getHolatLabel = (row: TopshiriqRow) =>
+  row.holat_ui_display ?? row.holat_display;
+const getBandLabel = (value: string | number) =>
+  String(value).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+const getMasulLabel = (row: TopshiriqRow) =>
+  row.ijrochi_xodim_fio?.trim() || row.ijrochi_boshqarma_nomi;
+const getQolganKunLabel = (row: TopshiriqRow) => {
+  if (row.bajarildi) return "Bajarilgan";
+  return `${Math.abs(row.qolgan_kunlar)} kun`;
 };
 
 const TopshiriqlarPage = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState([]);
-  const [total, setTotal] = useState(0);
+  const [data, setData] = useState<TopshiriqRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchText, setSearchText] = useState("");
-  const [filterHolat, setFilterHolat] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-
-  const getAllTopshiriqlar = async (page = 1) => {
-    try {
-      setLoading(true);
-      const res = await api.get(API_ENDPOINTS.TOPSHIRIQLAR.LIST, {
-        params: { page },
-      });
-      setData(res.data.results);
-      setTotal(res.data.count);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [filterBayonnoma, setFilterBayonnoma] = useState<string>();
+  const [filterBoshqarma, setFilterBoshqarma] = useState<string>();
+  const [filterHolat, setFilterHolat] = useState<string>();
 
   useEffect(() => {
-    getAllTopshiriqlar(currentPage);
-  }, [currentPage]);
+    const fetchTopshiriqlar = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get(API_ENDPOINTS.TOPSHIRIQLAR.LIST, {
+          params: { all: true },
+        });
+        const results = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+        setData(results);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const filtered = data.filter((row) => {
-    const matchSearch =
-      row.bayonnoma_raqami.toLowerCase().includes(searchText.toLowerCase()) ||
-      row.mazmun.toLowerCase().includes(searchText.toLowerCase()) ||
-      row.ijrochi_boshqarma_qisqa_nomi
-        .toLowerCase()
-        .includes(searchText.toLowerCase());
-    const matchHolat = filterHolat === "all" || row.holat === filterHolat;
-    return matchSearch && matchHolat;
-  });
+    fetchTopshiriqlar();
+  }, []);
+
+  const filtered = useMemo(
+    () =>
+      data.filter((row) => {
+        const matchBayonnoma =
+          !filterBayonnoma || row.bayonnoma_raqami === filterBayonnoma;
+        const matchBoshqarma =
+          !filterBoshqarma || row.ijrochi_boshqarma_nomi === filterBoshqarma;
+        const matchHolat = !filterHolat || getHolat(row) === filterHolat;
+        return matchBayonnoma && matchBoshqarma && matchHolat;
+      }),
+    [data, filterBayonnoma, filterBoshqarma, filterHolat],
+  );
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchText, filterHolat]);
+  }, [filterBayonnoma, filterBoshqarma, filterHolat]);
 
-  const stats = {
-    kechikkan: data.filter((d) => d.holat === "kechikkan").length,
-    jarayonda: data.filter((d) => d.holat === "jarayonda").length,
-    bajarildi: data.filter((d) => d.holat === "bajarildi").length,
-  };
+  const stats = useMemo(
+    () => ({
+      jami: data.length,
+      jarayonda: data.filter((item) => getHolat(item) === "jarayonda").length,
+      tasdiqlashda: data.filter((item) => getHolat(item) === "tasdiqlashda").length,
+      bajarildi: data.filter((item) => getHolat(item) === "bajarildi").length,
+      kechikkan: data.filter((item) => getHolat(item) === "kechikkan").length,
+    }),
+    [data],
+  );
 
   const statCards = [
     {
-      label: "Jami",
-      value: total,
-      colorClass: "text-slate-800",
-      bgClass: "bg-gradient-to-br from-slate-50 to-slate-100",
-      borderClass: "border-slate-200",
-      accentClass: "text-slate-500",
-      dotClass: "bg-slate-400",
-    },
-    {
-      label: "Kechikkan",
-      value: stats.kechikkan,
-      colorClass: "text-rose-700",
-      bgClass: "bg-gradient-to-br from-rose-50 to-rose-100",
-      borderClass: "border-rose-200",
-      accentClass: "text-rose-500",
-      dotClass: "bg-rose-400",
+      label: "Jami topshiriqlar",
+      value: stats.jami,
+      classes: "text-slate-800 border-slate-200 bg-slate-50",
     },
     {
       label: "Jarayonda",
       value: stats.jarayonda,
-      colorClass: "text-blue-700",
-      bgClass: "bg-gradient-to-br from-blue-50 to-blue-100",
-      borderClass: "border-blue-200",
-      accentClass: "text-blue-500",
-      dotClass: "bg-blue-400",
+      classes: "text-blue-700 border-blue-200 bg-blue-50",
     },
     {
-      label: "Bajarildi",
+      label: "Tasdiqlashda",
+      value: stats.tasdiqlashda,
+      classes: "text-amber-700 border-amber-200 bg-amber-50",
+    },
+    {
+      label: "Bajarilgan",
       value: stats.bajarildi,
-      colorClass: "text-green-700",
-      bgClass: "bg-gradient-to-br from-green-50 to-green-100",
-      borderClass: "border-green-200",
-      accentClass: "text-green-500",
-      dotClass: "bg-green-400",
+      classes: "text-green-700 border-green-200 bg-green-50",
+    },
+    {
+      label: "Kechikkan",
+      value: stats.kechikkan,
+      classes: "text-rose-700 border-rose-200 bg-rose-50",
     },
   ];
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const uniqueBayonnomalar = Array.from(new Set(data.map((item) => item.bayonnoma_raqami)));
+  const uniqueBoshqarmalar = Array.from(
+    new Set(data.map((item) => item.ijrochi_boshqarma_nomi)),
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-sky-50 rounded-2xl font-sans">
-      {/* Header */}
-      <div className="bg-white/85 backdrop-blur-xl border-b border-slate-200/80 rounded-t-2xl shadow-sm shadow-indigo-100/50">
-        <div className="w-full px-7 py-4 flex items-center justify-between">
+    <div className="min-h-screen rounded-2xl bg-gradient-to-br from-slate-50 via-indigo-50 to-sky-50">
+      <div className="rounded-t-2xl border-b border-slate-200/80 bg-white/85 shadow-sm shadow-indigo-100/50 backdrop-blur-xl">
+        <div className="flex items-center justify-between px-7 py-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-[13px] bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-400/40">
-              <FileTextOutlined className="text-white text-xl" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-[13px] bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-400/40">
+              <FileTextOutlined className="text-xl text-white" />
             </div>
             <div>
-              <h1 className="m-0 text-xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              <h1 className="m-0 text-xl font-extrabold leading-tight tracking-tight text-slate-900">
                 Topshiriqlar
               </h1>
-              <p className="m-0 text-xs text-slate-400 font-medium tracking-wide">
-                Bayonnomalar bo'yicha topshiriqlar ro'yxati
+              <p className="m-0 text-xs font-medium tracking-wide text-slate-400">
+                Bayonnomalar bo&apos;yicha topshiriqlar statistikasi
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto px-7 py-6 flex flex-col gap-5">
-        {/* Stat Cards */}
-        <div className="grid grid-cols-4 gap-3.5">
-          {statCards.map((s) => (
+      <div className="mx-auto flex flex-col gap-5 px-7 py-6">
+        <div className="grid grid-cols-5 gap-3.5">
+          {statCards.map((card) => (
             <div
-              key={s.label}
-              className={`relative overflow-hidden ${s.bgClass} border ${s.borderClass} rounded-2xl p-4 shadow-sm`}
+              key={card.label}
+              className={`rounded-2xl border p-4 shadow-sm ${card.classes}`}
             >
-              {/* Decorative circle */}
-              <div
-                className={`absolute -top-3.5 -right-3.5 w-14 h-14 rounded-full ${s.dotClass} opacity-15`}
-              />
-              <p
-                className={`m-0 mb-1 text-[11px] font-bold uppercase tracking-widest ${s.accentClass}`}
-              >
-                {s.label}
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-widest opacity-75">
+                {card.label}
               </p>
-              <p
-                className={`m-0 text-[32px] font-extrabold leading-tight tracking-tighter ${s.colorClass}`}
-              >
-                {s.value}
+              <p className="m-0 text-[32px] font-extrabold leading-tight tracking-tighter">
+                {card.value}
               </p>
             </div>
           ))}
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-2.5 flex-wrap items-center">
-          <Search
-            placeholder="Bayonnoma raqami, mazmun yoki boshqarma..."
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Select
+            value={filterBayonnoma}
+            onChange={setFilterBayonnoma}
             allowClear
-            prefix={<SearchOutlined className="text-slate-400" />}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="flex-1 max-w-[480px] rounded-xl"
-            styles={{ input: { fontWeight: 500, fontSize: 13 } }}
+            placeholder="Bayonnoma raqami"
+            className="min-w-[220px]"
+            options={uniqueBayonnomalar.map((value) => ({ value, label: value }))}
+          />
+          <Select
+            value={filterBoshqarma}
+            onChange={setFilterBoshqarma}
+            allowClear
+            placeholder="Mas'ul boshqarma"
+            className="min-w-[240px]"
+            options={uniqueBoshqarmalar.map((value) => ({ value, label: value }))}
           />
           <Select
             value={filterHolat}
             onChange={setFilterHolat}
-            className="min-w-[170px]"
+            allowClear
+            placeholder="Topshiriq holati"
             suffixIcon={<FilterOutlined className="text-slate-500" />}
-            styles={{ popup: { borderRadius: 12 } }}
-          >
-            <Option value="all">Barcha holatlar</Option>
-            <Option value="kechikkan">Kechikkan</Option>
-            <Option value="jarayonda">Jarayonda</Option>
-            <Option value="bajarildi">Bajarildi</Option>
-          </Select>
+            className="min-w-[200px]"
+            options={[
+              { value: "jarayonda", label: "Jarayonda" },
+              { value: "tasdiqlashda", label: "Tasdiqlashda" },
+              { value: "bajarildi", label: "Bajarilgan" },
+              { value: "kechikkan", label: "Kechikkan" },
+            ]}
+          />
         </div>
 
-        {/* Table */}
-        <div className="bg-white/92 backdrop-blur-lg rounded-2xl border border-slate-200 shadow-md shadow-indigo-100/50 overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/92 shadow-md shadow-indigo-100/50 backdrop-blur-lg">
           <Spin spinning={loading} tip="Yuklanmoqda...">
-            {filtered.length === 0 ? (
+            {paginated.length === 0 ? (
               <div className="py-16 text-center text-slate-300">
                 <FileTextOutlined className="mb-3 text-4xl opacity-35" />
                 <p className="m-0 text-sm font-medium text-slate-400">
@@ -198,85 +228,79 @@ const TopshiriqlarPage = () => {
                 <div className="overflow-x-auto">
                   <table className="min-w-full">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 text-left text-[11px] font-bold uppercase tracking-[0.07em] text-slate-500">
-                        <th className="px-4 py-3">Bayonnoma №</th>
-                        <th className="px-4 py-3">Boshqarma</th>
-                        <th className="px-4 py-3">Band №</th>
-                        <th className="px-4 py-3">Mazmun</th>
+                      <tr className="bg-gradient-to-b from-slate-50 to-slate-100 text-left text-[11px] font-bold uppercase tracking-[0.07em] text-slate-500">
+                        <th className="px-4 py-3">Bayonnoma raqami</th>
+                        <th className="px-4 py-3">Mas&apos;ul shaxs</th>
+                        <th className="px-4 py-3">Band raqami</th>
+                        <th className="px-4 py-3">Qisqacha mazmuni</th>
                         <th className="px-4 py-3">Muddat</th>
-                        <th className="px-4 py-3">Holat</th>
+                        <th className="px-4 py-3">Holati</th>
                         <th className="px-4 py-3">Qolgan kunlar</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filtered.map((row) => {
-                        const cfg = statusConfig[row.holat] || statusConfig.jarayonda;
-                        const styleMap = {
-                          kechikkan:
-                            "bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border-rose-200",
-                          jarayonda:
-                            "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200",
-                          bajarildi:
-                            "bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200",
-                        };
+                      {paginated.map((row) => {
+                        const holat = getHolat(row);
+                        const config = statusConfig[holat] ?? statusConfig.jarayonda;
+
                         return (
                           <tr
                             key={row.id}
                             onClick={() => navigate(`/topshiriqlar/${row.id}`)}
                             className={`cursor-pointer border-b border-slate-100 transition hover:bg-violet-50 ${
-                              row.is_kechikkan ? "bg-rose-50/50" : ""
+                              holat === "kechikkan" ? "bg-rose-50/50" : ""
                             }`}
                           >
                             <td className="px-4 py-3">
-                              <span className="rounded-md border border-slate-300 bg-gradient-to-br from-slate-100 to-slate-200 px-2.5 py-1 font-mono text-xs font-semibold tracking-wide text-slate-800">
+                              <span className="rounded-md border border-slate-300 bg-slate-100 px-2.5 py-1 font-mono text-xs font-semibold text-slate-800">
                                 {row.bayonnoma_raqami}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-500 text-sm font-bold tracking-wide text-white shadow-md shadow-indigo-300/50">
-                                {row.ijrochi_boshqarma_qisqa_nomi}
-                              </div>
+                            <td className="px-4 py-3 text-sm font-medium text-slate-700">
+                              {getMasulLabel(row)}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-sm font-semibold text-slate-500">
+                              {getBandLabel(row.band_raqami)}
                             </td>
                             <td className="px-4 py-3">
-                              <span className="font-mono text-sm font-semibold text-slate-400">
-                                #{row.band_raqami}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="text-sm leading-relaxed text-slate-700">
+                              <span
+                                className="block max-w-[420px] overflow-hidden text-sm leading-6 text-slate-700"
+                                style={{
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
+                                }}
+                              >
                                 {row.mazmun}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
-                              <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+                            <td className="px-4 py-3 text-sm font-semibold text-slate-600">
+                              <span className="flex items-center gap-1.5">
                                 <ClockCircleOutlined className="text-xs text-slate-400" />
                                 {row.muddat}
                               </span>
                             </td>
                             <td className="px-4 py-3">
                               <span
-                                className={`inline-flex whitespace-nowrap rounded-full border px-3 py-0.5 text-xs font-semibold ${styleMap[row.holat] || styleMap.jarayonda}`}
+                                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-0.5 text-xs font-semibold ${config.badge}`}
                               >
-                                <span className="mr-1.5">{cfg.icon}</span>
-                                {row.holat_display}
+                                {config.icon}
+                                {getHolatLabel(row)}
                               </span>
                             </td>
                             <td className="px-4 py-3">
                               {row.bajarildi ? (
                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-600">
                                   <CheckCircleOutlined />
-                                  Tugallandi
+                                  {getQolganKunLabel(row)}
                                 </span>
                               ) : row.qolgan_kunlar < 0 ? (
-                                <span
-                                  title={`${Math.abs(row.qolgan_kunlar)} kun kechikdi`}
-                                  className="inline-block cursor-help rounded-lg border border-rose-200 bg-gradient-to-br from-rose-50 to-rose-100 px-2.5 py-0.5 text-sm font-bold text-red-600"
-                                >
-                                  {row.qolgan_kunlar} kun
+                                <span className="inline-block rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-sm font-bold text-red-600">
+                                  {getQolganKunLabel(row)}
                                 </span>
                               ) : (
-                                <span className="inline-block rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 px-2.5 py-0.5 text-sm font-bold text-blue-600">
-                                  +{row.qolgan_kunlar} kun
+                                <span className="inline-block rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-sm font-bold text-blue-600">
+                                  {getQolganKunLabel(row)}
                                 </span>
                               )}
                             </td>
@@ -286,12 +310,12 @@ const TopshiriqlarPage = () => {
                     </tbody>
                   </table>
                 </div>
+
                 <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3">
                   <span className="text-xs font-medium text-slate-400">
-                    {Math.min((currentPage - 1) * PAGE_SIZE + 1, total)}–
-                    {Math.min(currentPage * PAGE_SIZE, total)} /{" "}
-                    <strong className="text-slate-600">{total}</strong> ta
-                    topshiriq
+                    {Math.min((currentPage - 1) * PAGE_SIZE + 1, filtered.length)}–
+                    {Math.min(currentPage * PAGE_SIZE, filtered.length)} /{" "}
+                    <strong className="text-slate-600">{filtered.length}</strong> ta topshiriq
                   </span>
                   <div className="flex items-center gap-2">
                     <button

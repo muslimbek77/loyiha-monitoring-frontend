@@ -15,6 +15,7 @@ interface User {
   id: number;
   fio: string;
   lavozim: string;
+  lavozim_kodi?: string;
   boshqarma_nomi: string;
   is_active: boolean;
   avatar?: string;
@@ -29,15 +30,14 @@ interface PaginatedResponse {
 
 const LAVOZIM_OPTIONS = [
   { value: "", label: "Barcha lavozimlar" },
-  { value: "rais", label: "Boshqaruv Raisi" },
-  { value: "rais_orinbosari", label: "Rais O'rinbosari" },
-  { value: "boshqarma_boshi", label: "Boshqarma Boshlig'i" },
-  { value: "pto", label: "PTO xodimi" },
-  { value: "iqtisod", label: "Iqtisodchi" },
-  { value: "buxgalter", label: "Buxgalter" },
-  { value: "kadr", label: "Kadrlar xodimi" },
+  { value: "rais", label: "Rais" },
+  { value: "rais_orinbosari", label: "Rais o'rinbosari" },
+  { value: "boshqarma_boshi", label: "Bosh bo'limi" },
+  { value: "boshqarma_boshligi_orinbosari", label: "Bo'lim o'rinbosari" },
+  { value: "yetakchi_muhandis", label: "Yetakchi muhandis" },
+  { value: "muhandis", label: "Muhandis" },
   { value: "uchastka_rahbari", label: "Uchastka rahbari" },
-  { value: "xodim", label: "Oddiy xodim" },
+  { value: "xodim", label: "Prorab" },
 ];
 
 const PAGE_SIZE = 10;
@@ -218,7 +218,7 @@ const XodimlarPage = () => {
 
                     <td className="px-4 py-3.5">
                       <span className="inline-flex items-center w-full px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 capitalize">
-                        {user.lavozim.replace("_", " ")}
+                        {user.lavozim}
                       </span>
                     </td>
 

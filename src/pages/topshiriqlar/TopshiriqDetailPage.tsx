@@ -29,12 +29,20 @@ const statusConfig = {
     antColor: "blue",
     bg: "from-blue-500 to-indigo-600",
   },
+  tasdiqlashda: {
+    icon: <ClockCircleOutlined />,
+    antColor: "gold",
+    bg: "from-amber-500 to-orange-500",
+  },
   bajarildi: {
     icon: <CheckCircleOutlined />,
     antColor: "green",
     bg: "from-emerald-500 to-green-600",
   },
 };
+
+const getBandLabel = (value) =>
+  String(value).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
 
 // ─── Info Row ─────────────────────────────────────────────────────────────────
 const InfoRow = ({ icon, label, value, mono = false }) => (
@@ -60,7 +68,7 @@ const DaysBadge = ({ days, done }) => {
   if (done)
     return (
       <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-sm font-semibold px-3 py-1 rounded-full">
-        <CheckCircleOutlined /> Tugallandi
+        <CheckCircleOutlined /> Bajarilgan
       </span>
     );
   if (days < 0)
@@ -240,7 +248,9 @@ const TopshiriqDetailPage = () => {
       </div>
     );
 
-  const cfg = statusConfig[data.holat] || statusConfig.jarayonda;
+  const holat = data.holat_ui ?? data.holat;
+  const holatLabel = data.holat_ui_display ?? data.holat_display;
+  const cfg = statusConfig[holat] || statusConfig.jarayonda;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -272,7 +282,7 @@ const TopshiriqDetailPage = () => {
                   className="border-0 text-white text-xs font-semibold px-3 py-1 rounded-full"
                   style={{ background: "rgba(255,255,255,0.25)" }}
                 >
-                  {data.holat_display}
+                  {holatLabel}
                 </Tag>
                 <DaysBadge days={data.qolgan_kunlar} done={data.bajarildi} />
               </div>
@@ -287,7 +297,7 @@ const TopshiriqDetailPage = () => {
               <p className="text-white/60 text-xs mt-1">
                 Band №{" "}
                 <span className="text-white font-semibold">
-                  {data.band_raqami}
+                  {getBandLabel(data.band_raqami)}
                 </span>
               </p>
             </div>
@@ -470,7 +480,7 @@ const TopshiriqDetailPage = () => {
                 color={cfg.antColor}
                 className="text-sm font-semibold px-3 py-1! rounded-lg w-full flex items-center justify-center gap-2"
               >
-                {data.holat_display}
+                {holatLabel}
               </Tag>
 
               <Divider className="my-4" />
@@ -504,12 +514,18 @@ const TopshiriqDetailPage = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-slate-400">Qolgan kunlar</span>
-                  <span
-                    className={`text-xs font-bold ${data.qolgan_kunlar < 0 ? "text-red-600" : "text-blue-600"}`}
-                  >
-                    {data.qolgan_kunlar > 0 ? "+" : ""}
-                    {data.qolgan_kunlar} kun
-                  </span>
+                  {data.bajarildi ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-600">
+                      <CheckCircleOutlined />
+                      Bajarilgan
+                    </span>
+                  ) : (
+                    <span
+                      className={`text-xs font-bold ${data.qolgan_kunlar < 0 ? "text-red-600" : "text-blue-600"}`}
+                    >
+                      {Math.abs(data.qolgan_kunlar)} kun
+                    </span>
+                  )}
                 </div>
               </div>
             </Card>

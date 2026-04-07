@@ -21,7 +21,7 @@ import {
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate } from "react-router-dom";
-import Can from "@/shared/components/guards/Can";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 interface OxirgiXabar {
   matn: string;
@@ -207,6 +207,7 @@ const ChatXonalarPage = () => {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // ── New xona modal state
   const [createModal, setCreateModal] = useState(false);
@@ -326,6 +327,7 @@ const ChatXonalarPage = () => {
 
   const totalUnread =
     data?.results.reduce((sum, x) => sum + x.oqilmagan_soni, 0) ?? 0;
+  const canCreateChatRoom = Boolean(user?.is_staff);
 
   return (
     <div
@@ -356,7 +358,7 @@ const ChatXonalarPage = () => {
                 title={`${totalUnread} ta o'qilmagan xabar`}
               />
             )}
-            <Can action="canCreate">
+            {canCreateChatRoom && (
               <Button
                 type="primary"
                 size="middle"
@@ -366,7 +368,7 @@ const ChatXonalarPage = () => {
               >
                 Yangi xona
               </Button>
-            </Can>
+            )}
           </div>
         </div>
 
@@ -466,9 +468,9 @@ const ChatXonalarPage = () => {
             rules={[{ required: true, message: "Xona turini tanlang" }]}
           >
             <Select placeholder="Turini tanlang">
-              <Select.Option value="yakka">Yakka</Select.Option>
-              <Select.Option value="guruh">Guruh</Select.Option>
-              <Select.Option value="obyekt">Obyekt</Select.Option>
+              <Select.Option value="yakka">Shaxsiy chat</Select.Option>
+              <Select.Option value="guruh">Guruhlar kesimida</Select.Option>
+              <Select.Option value="obyekt">Obyektlar kesimida</Select.Option>
             </Select>
           </Form.Item>
 

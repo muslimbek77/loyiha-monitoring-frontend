@@ -1,13 +1,19 @@
 export const LAVOZIM_OPTIONS = [
-  { label: "Boshqaruv raisi", value: "rais" },
-  { label: "Rais O'rinbosari", value: "rais_orinbosari" },
-  { label: "Boshqarma Boshlig'i", value: "boshqarma_boshi" },
+  { label: "Boshqaruv Raisi", value: "rais" },
+  { label: "Boshqaruv rais o'rinbosari", value: "rais_orinbosari" },
+  { label: "Boshqarma boshlig'i", value: "boshqarma_boshi" },
+  {
+    label: "Boshqarma boshlig'i o'rinbosari",
+    value: "boshqarma_boshligi_orinbosari",
+  },
+  { label: "Yetakchi muhandis", value: "yetakchi_muhandis" },
+  { label: "Muhandis", value: "muhandis" },
   { label: "Uchastka Rahbari", value: "uchastka_rahbari" },
   { label: "PTO", value: "pto" },
   { label: "Buxgalter", value: "buxgalter" },
   { label: "Iqtisodchi", value: "iqtisod" },
   { label: "Kadrlar Xodimi", value: "kadr" },
-  { label: "Oddiy Xodim", value: "xodim" },
+  { label: "Muhandis", value: "xodim" },
 ];
 export const UZBEKISTAN_LOCATIONS = {
   "Toshkent shahri": [

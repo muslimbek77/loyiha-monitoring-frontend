@@ -32,7 +32,6 @@ export const API_ENDPOINTS = {
     LIST_ALL: "/core/boshqarmalar/?all=true",
     DETAIL: (id: string | number) => `/core/boshqarmalar/${id}/`,
     STATISTIKA: (id: string | number) => `/core/boshqarmalar/${id}/statistika/`,
-    OVERVIEW: (id: string | number) => `/core/boshqarmalar/${id}/overview/`,
   },
 
   HUJJATLAR: {
@@ -92,6 +91,8 @@ export const API_ENDPOINTS = {
     XABAR_YUBORISH: (id: string | number) => `/chat/xonalar/${id}/xabar_yuborish/`,
     ISHTIROKCHI_QOSHISH: (id: string | number) =>
       `/chat/xonalar/${id}/ishtirokchi_qoshish/`,
+    ISHTIROKCHI_OCHIRISH: (id: string | number) =>
+      `/chat/xonalar/${id}/ishtirokchi_ochirish/`,
     CHIQISH: (id: string | number) => `/chat/xonalar/${id}/chiqish/`,
   },
 
