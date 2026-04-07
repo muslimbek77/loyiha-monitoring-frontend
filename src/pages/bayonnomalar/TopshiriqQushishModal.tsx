@@ -7,7 +7,6 @@ import {
   Form,
   Input,
   Select,
-  InputNumber,
   Button,
   message,
 } from "antd";
@@ -36,7 +35,7 @@ interface TopshiriqQoshishPayload {
   muddat: string;
   ijrochi_boshqarma?: number | null;
   ijrochi_xodim?: number[] | null;
-  band_raqami?: number | null;
+  band_raqami?: string | null;
   izoh?: string;
   natija?: string;
 }
@@ -133,7 +132,8 @@ const TopshiriqQoshishModal = ({
   const [xodimLoading, setXodimLoading] = useState(false);
   const isBoshqarmaRahbar =
     currentUser?.lavozim === "boshqarma_boshi" ||
-    currentUser?.lavozim === "boshqarma_boshligi";
+    currentUser?.lavozim === "boshqarma_boshligi" ||
+    currentUser?.lavozim === "boshqarma_boshligi_orinbosari";
   const ownBoshqarmaId = currentUser?.boshqarma
     ? Number(currentUser.boshqarma)
     : null;
@@ -382,10 +382,9 @@ const TopshiriqQoshishModal = ({
               className="mb-4!"
               rules={[{ required: true, message: "Band raqamini kiriting!" }]}
             >
-              <InputNumber
-                min={1}
+              <Input
                 style={{ width: 250 }}
-                placeholder="Band raqamini kiriting"
+                placeholder="Masalan: 1 yoki 1.2"
                 className="rounded-xl! border-slate-200! hover:border-emerald-300! h-10!"
               />
             </Form.Item>

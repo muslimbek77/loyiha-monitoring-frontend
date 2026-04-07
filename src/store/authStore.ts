@@ -17,6 +17,7 @@ export type AuthUser = {
   lavozim_display?: string;
   boshqarma?: string;
   is_active?: boolean;
+  is_staff?: boolean;
   date_joined?: string;
   last_login?: string | null;
 };

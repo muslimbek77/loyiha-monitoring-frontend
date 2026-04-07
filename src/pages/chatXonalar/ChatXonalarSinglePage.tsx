@@ -10,10 +10,8 @@ import {
   Input,
   Modal,
   Select,
-  Form,
   message,
-  Divider,
-  Upload,
+  Popconfirm,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -24,12 +22,12 @@ import {
   SendOutlined,
   UserAddOutlined,
   MessageOutlined,
-  UploadOutlined,
-  LoadingOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +37,7 @@ interface Ishtirokchi {
   fio: string;
   avatar: string | null;
   lavozim: string;
+  lavozim_kodi?: string;
   oqilmagan_soni: number;
   bildirishnoma: boolean;
 }
@@ -63,18 +62,10 @@ interface Xabar {
   o_qilgan: boolean;
 }
 
-interface Obyekt {
-  id: number;
-  nomi?: string;
-  name?: string;
-}
-
 interface User {
   id: number;
+  fio?: string;
   username?: string;
-  full_name?: string;
-  first_name?: string;
-  last_name?: string;
   email?: string;
 }
 
@@ -126,16 +117,19 @@ const formatTime = (vaqt: string) =>
     minute: "2-digit",
   });
 
-const getUserLabel = (u: User) => {
-  const name = u.fio ?? [u.fio].filter(Boolean).join(" ") ?? u.username ?? `Foydalanuvchi ${u.id}`;
-  return name;
-};
-
-const getObyektLabel = (o: Obyekt) => o.nomi ?? o.name ?? String(o.id);
+const getUserLabel = (u: User) => u.fio ?? u.username ?? `Foydalanuvchi ${u.id}`;
 
 // ─── IshtirokchiCard ──────────────────────────────────────────────────────────
 
-const IshtirokchiCard = ({ ishtirokchi }: { ishtirokchi: Ishtirokchi }) => (
+const IshtirokchiCard = ({
+  ishtirokchi,
+  canManage,
+  onRemove,
+}: {
+  ishtirokchi: Ishtirokchi;
+  canManage: boolean;
+  onRemove: (userId: number) => void;
+}) => (
   <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors">
     <div className="relative flex-shrink-0">
       <Avatar
@@ -169,10 +163,10 @@ const IshtirokchiCard = ({ ishtirokchi }: { ishtirokchi: Ishtirokchi }) => (
         {ishtirokchi.fio}
       </span>
       <Tag
-        color={getLavozimColor(ishtirokchi.lavozim)}
+        color={getLavozimColor(ishtirokchi.lavozim_kodi ?? ishtirokchi.lavozim)}
         className="text-[11px] px-1.5 py-0 leading-4 m-0"
       >
-        {getLavozimLabel(ishtirokchi.lavozim)}
+        {getLavozimLabel(ishtirokchi.lavozim_kodi ?? ishtirokchi.lavozim)}
       </Tag>
     </div>
 
@@ -194,6 +188,21 @@ const IshtirokchiCard = ({ ishtirokchi }: { ishtirokchi: Ishtirokchi }) => (
         <span className="text-xs text-blue-500 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-full">
           {ishtirokchi.oqilmagan_soni} yangi
         </span>
+      )}
+      {canManage && (
+        <Popconfirm
+          title="Ishtirokchini guruhdan o'chirasizmi?"
+          okText="O'chirish"
+          cancelText="Bekor qilish"
+          onConfirm={() => onRemove(ishtirokchi.foydalanuvchi)}
+        >
+          <Button
+            type="text"
+            size="small"
+            icon={<DeleteOutlined />}
+            className="text-red-500"
+          />
+        </Popconfirm>
       )}
     </div>
   </div>
@@ -242,6 +251,7 @@ const ChatXonaSinglePage = () => {
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   const [data, setData] = useState<XonaDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -256,18 +266,12 @@ const ChatXonaSinglePage = () => {
 
   // ── Add participant modal
   const [addModal, setAddModal] = useState(false);
-  const [addForm] = Form.useForm();
   const [addLoading, setAddLoading] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   // ── Add participant: dropdown data
-  const [obyektlar, setObyektlar] = useState<Obyekt[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [fetchingObyektlar, setFetchingObyektlar] = useState(false);
   const [fetchingUsers, setFetchingUsers] = useState(false);
-
-  // ── Add participant: file upload
-  const [rasmFile, setRasmFile] = useState<File | null>(null);
-  const [rasmPreview, setRasmPreview] = useState<string | null>(null);
 
   // ── Leave room
   const [leaveLoading, setLeaveLoading] = useState(false);
@@ -297,22 +301,9 @@ const ChatXonaSinglePage = () => {
     if (activeTab === "xabarlar" && id) fetchXabarlar();
   }, [activeTab, id]);
 
-  // ── Fetch obyektlar + users when modal opens
+  // ── Fetch users when modal opens
   useEffect(() => {
     if (!addModal) return;
-
-    const fetchObyektlar = async () => {
-      setFetchingObyektlar(true);
-      try {
-        const res = await api.get(API_ENDPOINTS.OBYEKTLAR.LIST);
-        const d = res.data;
-        setObyektlar(Array.isArray(d) ? d : (d.results ?? []));
-      } catch {
-        messageApi.error("Obyektlarni yuklashda xatolik");
-      } finally {
-        setFetchingObyektlar(false);
-      }
-    };
 
     const fetchUsers = async () => {
       setFetchingUsers(true);
@@ -327,7 +318,6 @@ const ChatXonaSinglePage = () => {
       }
     };
 
-    fetchObyektlar();
     fetchUsers();
   }, [addModal]);
 
@@ -343,9 +333,13 @@ const ChatXonaSinglePage = () => {
     setXabarlarLoading(true);
     try {
       const res = await api.get<{ results: Xabar[] }>(
-        `chat/xonalar/${id}/xabarlar/`,
+        API_ENDPOINTS.CHAT_XONALAR.XABARLAR(id),
       );
       setXabarlar(res.data?.results ?? []);
+      const detailRes = await api.get<XonaDetail>(
+        API_ENDPOINTS.CHAT_XONALAR.DETAIL(id),
+      );
+      setData(detailRes.data);
     } catch (err: any) {
       messageApi.error(
         err?.response?.data?.detail ?? "Xabarlarni yuklashda xatolik",
@@ -361,11 +355,18 @@ const ChatXonaSinglePage = () => {
     if (!yangiXabar.trim() || !id) return;
     setSending(true);
     try {
-      const res = await api.post<Xabar>(`chat/xonalar/${id}/xabar_yuborish/`, {
-        matn: yangiXabar.trim(),
-      });
+      const res = await api.post<Xabar>(
+        API_ENDPOINTS.CHAT_XONALAR.XABAR_YUBORISH(id),
+        {
+          matn: yangiXabar.trim(),
+        },
+      );
       setXabarlar((prev) => [...(Array.isArray(prev) ? prev : []), res.data]);
       setYangiXabar("");
+      const detailRes = await api.get<XonaDetail>(
+        API_ENDPOINTS.CHAT_XONALAR.DETAIL(id),
+      );
+      setData(detailRes.data);
     } catch (err: any) {
       messageApi.error(
         err?.response?.data?.detail ?? "Xabar yuborishda xatolik",
@@ -377,22 +378,16 @@ const ChatXonaSinglePage = () => {
 
   // ─── API: POST add participant ───────────────────────────────────────────────
 
-  const handleAddIshtirokchi = async (values: any) => {
-    if (!id) return;
+  const handleAddIshtirokchi = async () => {
+    if (!id || !selectedUserId) return;
     setAddLoading(true);
     try {
-      const fd = new FormData();
-      Object.entries(values).forEach(([k, v]) => {
-        if (v != null) fd.append(k, v as any);
-      });
-      if (rasmFile) fd.set("rasm", rasmFile);
-
-      await api.post(API_ENDPOINTS.CHAT_XONALAR.ISHTIROKCHI_QOSHISH(id!), fd, {
-        headers: { "Content-Type": "multipart/form-data" },
+      await api.post(API_ENDPOINTS.CHAT_XONALAR.ISHTIROKCHI_QOSHISH(id), {
+        foydalanuvchi_id: selectedUserId,
       });
       messageApi.success("Ishtirokchi muvaffaqiyatli qo'shildi");
       closeAddModal();
-      const res = await api.get<XonaDetail>(`chat/xonalar/${id}/`);
+      const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
       setData(res.data);
     } catch (err: any) {
       messageApi.error(
@@ -400,6 +395,22 @@ const ChatXonaSinglePage = () => {
       );
     } finally {
       setAddLoading(false);
+    }
+  };
+
+  const handleRemoveIshtirokchi = async (userId: number) => {
+    if (!id) return;
+    try {
+      await api.post(API_ENDPOINTS.CHAT_XONALAR.ISHTIROKCHI_OCHIRISH(id), {
+        foydalanuvchi_id: userId,
+      });
+      messageApi.success("Ishtirokchi guruhdan o'chirildi");
+      const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
+      setData(res.data);
+    } catch (err: any) {
+      messageApi.error(
+        err?.response?.data?.detail ?? "Ishtirokchini o'chirishda xatolik",
+      );
     }
   };
 
@@ -425,34 +436,23 @@ const ChatXonaSinglePage = () => {
 
   const closeAddModal = () => {
     setAddModal(false);
-    addForm.resetFields();
-    setRasmFile(null);
-    setRasmPreview(null);
-  };
-
-  const handleRasmChange = (info: any) => {
-    const file: File = info.file.originFileObj ?? info.file;
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      messageApi.error("Faqat rasm fayli yuklang!");
-      return;
-    }
-    if (file.size / 1024 / 1024 > 5) {
-      messageApi.error("Rasm 5MB dan kichik bo'lishi kerak!");
-      return;
-    }
-    setRasmFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => setRasmPreview(e.target?.result as string);
-    reader.readAsDataURL(file);
+    setSelectedUserId(null);
   };
 
   // ─── Computed ────────────────────────────────────────────────────────────────
 
   const totalUnread =
-    data?.ishtirokchilar.reduce((sum, i) => sum + i.oqilmagan_soni, 0) ?? 0;
+    data?.ishtirokchilar.find((i) => i.foydalanuvchi === user?.id)
+      ?.oqilmagan_soni ?? 0;
   const notifOn =
     data?.ishtirokchilar.filter((i) => i.bildirishnoma).length ?? 0;
+  const canManageParticipants = Boolean(data?.turi === "guruh");
+  const availableUsers = users.filter(
+    (candidate) =>
+      !data?.ishtirokchilar.some(
+        (ishtirokchi) => ishtirokchi.foydalanuvchi === candidate.id,
+      ),
+  );
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -522,6 +522,7 @@ const ChatXonaSinglePage = () => {
                   size="small"
                   className="text-blue-500"
                   onClick={() => setAddModal(true)}
+                  disabled={!canManageParticipants}
                 />
               </Tooltip>
             </div>
@@ -677,6 +678,7 @@ const ChatXonaSinglePage = () => {
                       icon={<UserAddOutlined />}
                       className="text-xs p-0 h-auto"
                       onClick={() => setAddModal(true)}
+                      disabled={!canManageParticipants}
                     >
                       Qo'shish
                     </Button>
@@ -685,6 +687,10 @@ const ChatXonaSinglePage = () => {
                     <IshtirokchiCard
                       key={ishtirokchi.id}
                       ishtirokchi={ishtirokchi}
+                      canManage={
+                        canManageParticipants && ishtirokchi.foydalanuvchi !== user?.id
+                      }
+                      onRemove={handleRemoveIshtirokchi}
                     />
                   ))}
                 </div>
@@ -704,149 +710,36 @@ const ChatXonaSinglePage = () => {
         }
         open={addModal}
         onCancel={closeAddModal}
-        footer={null}
+        onOk={handleAddIshtirokchi}
+        okText="Qo'shish"
+        cancelText="Bekor qilish"
+        confirmLoading={addLoading}
+        okButtonProps={{ disabled: !selectedUserId }}
         destroyOnClose
-        width={480}
+        width={420}
       >
-        <Divider className="mt-2 mb-4" />
-        <Form
-          form={addForm}
-          layout="vertical"
-          onFinish={handleAddIshtirokchi}
-          requiredMark={false}
-        >
-          {/* Nomi */}
-          <Form.Item
-            name="nomi"
-            label="Nomi"
-            rules={[{ required: true, message: "Nomini kiriting" }]}
-          >
-            <Input placeholder="Ishtirokchi nomi" />
-          </Form.Item>
-
-          {/* Turi */}
-          <Form.Item
-            name="turi"
-            label="Turi"
-            rules={[{ required: true, message: "Turini tanlang" }]}
-          >
-            <Select placeholder="Turini tanlang">
-              <Select.Option value="yakka">Yakka</Select.Option>
-              <Select.Option value="guruh">Guruh</Select.Option>
-              <Select.Option value="obyekt">Obyekt</Select.Option>
-            </Select>
-          </Form.Item>
-
-          {/* Obyekt — searchable select */}
-          <Form.Item name="obyekt" label="Obyekt (ixtiyoriy)">
-            <Select
-              showSearch
-              allowClear
-              placeholder="Obyektni tanlang"
-              loading={fetchingObyektlar}
-              filterOption={(input, option) =>
-                String(option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              notFoundContent={
-                fetchingObyektlar ? (
-                  <Spin indicator={<LoadingOutlined spin />} size="small" />
-                ) : (
-                  "Topilmadi"
-                )
-              }
-              options={obyektlar.map((o) => ({
-                value: o.id,
-                label: getObyektLabel(o),
-              }))}
-            />
-          </Form.Item>
-
-          {/* Foydalanuvchi — searchable select */}
-          <Form.Item
-            name="foydalanuvchi_id"
-            label="Foydalanuvchi"
-            rules={[{ required: true, message: "Foydalanuvchini tanlang" }]}
-          >
-            <Select
-              showSearch
-              placeholder="Foydalanuvchini tanlang"
-              loading={fetchingUsers}
-              filterOption={(input, option) =>
-                String(option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              notFoundContent={
-                fetchingUsers ? (
-                  <Spin indicator={<LoadingOutlined spin />} size="small" />
-                ) : (
-                  "Topilmadi"
-                )
-              }
-              optionRender={(option) => (
-                <div className="flex items-center gap-2">
-                  <Avatar
-                    size="small"
-                    style={{ backgroundColor: "#1677ff", flexShrink: 0 }}
-                  >
-                    {String(option.label ?? "?")[0]?.toUpperCase()}
-                  </Avatar>
-                  <span>{option.label}</span>
-                </div>
-              )}
-              options={users.map((u) => ({
-                value: u.id,
-                label: getUserLabel(u),
-              }))}
-            />
-          </Form.Item>
-
-          {/* Rasm — file upload */}
-          <Form.Item name="rasm" label="Rasm (ixtiyoriy)">
-            <div className="flex items-center gap-3">
-              {rasmPreview && (
-                <Avatar
-                  src={rasmPreview}
-                  size={52}
-                  shape="square"
-                  className="rounded-lg border border-gray-200 flex-shrink-0"
-                />
-              )}
-              <Upload
-                accept="image/*"
-                showUploadList={false}
-                beforeUpload={() => false}
-                onChange={handleRasmChange}
-              >
-                <Button icon={<UploadOutlined />}>
-                  {rasmFile ? rasmFile.name : "Rasm yuklash"}
-                </Button>
-              </Upload>
-              {rasmFile && (
-                <Button
-                  type="text"
-                  danger
-                  size="small"
-                  onClick={() => {
-                    setRasmFile(null);
-                    setRasmPreview(null);
-                  }}
-                >
-                  O'chirish
-                </Button>
-              )}
-            </div>
-          </Form.Item>
-
-          <div className="flex justify-end gap-2 mt-4">
-            <Button onClick={closeAddModal}>Bekor qilish</Button>
-            <Button type="primary" htmlType="submit" loading={addLoading}>
-              Qo'shish
-            </Button>
-          </div>
-        </Form>
+        <div className="space-y-3 pt-2">
+          <p className="text-sm text-gray-500">
+            Guruh ichidan faqat foydalanuvchini tanlab qo'shing.
+          </p>
+          <Select
+            showSearch
+            optionFilterProp="label"
+            value={selectedUserId ?? undefined}
+            onChange={setSelectedUserId}
+            placeholder="Foydalanuvchini tanlang"
+            loading={fetchingUsers}
+            options={availableUsers.map((u) => ({
+              value: u.id,
+              label: getUserLabel(u),
+            }))}
+          />
+          {availableUsers.length === 0 && (
+            <p className="m-0 text-xs text-gray-400">
+              Qo'shish uchun yangi foydalanuvchi qolmagan.
+            </p>
+          )}
+        </div>
       </Modal>
     </div>
   );

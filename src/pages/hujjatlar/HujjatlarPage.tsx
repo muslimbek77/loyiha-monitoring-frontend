@@ -30,6 +30,8 @@ interface Hujjat {
   fayl_turi: string;
   holat: string;
   holat_display: string;
+  korinish: string;
+  korinish_display: string;
   muddat: string;
   yuklangan_vaqt: string;
   is_kechikkan: boolean;
@@ -95,6 +97,14 @@ const ORDERING_OPTIONS = [
   { value: "-muddat", label: "Muddat (uzoq)" },
 ];
 
+const KORINISH_OPTIONS = [
+  {
+    value: "rahbariyat_va_boshqarma",
+    label: "Rahbariyat va o'z boshqarmasi",
+  },
+  { value: "hammaga", label: "Hammaga" },
+];
+
 const HolatBadge = ({ holat, label }: { holat: string; label: string }) => {
   const style = holatColor[holat] ?? holatColor.default;
   return (
@@ -134,6 +144,8 @@ const HujjatlarPage = () => {
   const [stats, setStats] = useState({ kutilmoqda: 0, kechikkan: 0 });
 
   const { user } = useAuth();
+  const isRahbariyat =
+    user?.lavozim === "rais" || user?.lavozim === "rais_orinbosari";
 
   const flattenKategoriyaTree = (
     nodes: KategoriyaNode[],
@@ -182,11 +194,11 @@ const HujjatlarPage = () => {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    if (user?.boshqarma) {
+    if (user?.boshqarma && !isRahbariyat) {
       form.setFieldValue("boshqarma", String(user.boshqarma));
       handleFilterBoshqarmaChange(String(user.boshqarma));
     }
-  }, [user]);
+  }, [user, isRahbariyat]);
   const navigate = useNavigate();
 
   const activeFilterCount = Object.entries(filters).filter(
@@ -295,6 +307,7 @@ const HujjatlarPage = () => {
       formData.append("muddat", values.muddat || "");
       formData.append("izoh", values.izoh || "");
       formData.append("boshqarma", values.boshqarma);
+      formData.append("korinish", values.korinish || "rahbariyat_va_boshqarma");
       if (values.fayl?.fileList?.length > 0) {
         formData.append("fayl", values.fayl.fileList[0].originFileObj);
       }
@@ -488,6 +501,7 @@ const HujjatlarPage = () => {
                       <th className="px-4 py-3">Nomi</th>
                       <th className="px-4 py-3">Obyekt</th>
                       <th className="px-4 py-3">Boshqarma</th>
+                      <th className="px-4 py-3">Ko'rinish</th>
                       <th className="px-4 py-3">Kategoriya</th>
                       <th className="px-4 py-3">Holat</th>
                     </tr>
@@ -514,6 +528,9 @@ const HujjatlarPage = () => {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {record.boshqarma_nomi}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {record.korinish_display}
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
@@ -581,7 +598,10 @@ const HujjatlarPage = () => {
           </div>
         }
         open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => {
+          setIsModalOpen(false);
+          form.resetFields();
+        }}
         onOk={handleCreateHujjat}
         okText="Saqlash"
         okButtonProps={{
@@ -591,7 +611,12 @@ const HujjatlarPage = () => {
         className="hujjat-modal"
         width={520}
       >
-        <Form layout="vertical" form={form} className="pt-2">
+        <Form
+          layout="vertical"
+          form={form}
+          className="pt-2"
+          initialValues={{ korinish: "rahbariyat_va_boshqarma" }}
+        >
           <Form.Item
             name="nomi"
             label={<FieldLabel>Hujjat nomi</FieldLabel>}
@@ -614,7 +639,7 @@ const HujjatlarPage = () => {
                 showSearch
                 placeholder="Boshqarmani tanlang"
                 options={
-                  user?.boshqarma && user.lavozim !== "rais"
+                  user?.boshqarma && !isRahbariyat
                     ? boshqarmalarOptions.filter(
                         (b) => b.value === String(user.boshqarma),
                       )
@@ -672,6 +697,18 @@ const HujjatlarPage = () => {
                   .includes(input.toLowerCase())
               }
               className="rounded-lg"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="korinish"
+            label={<FieldLabel>Kimga ko'rinadi</FieldLabel>}
+            rules={[{ required: true, message: "Ko'rinishni tanlang" }]}
+          >
+            <Select
+              options={KORINISH_OPTIONS}
+              className="rounded-lg"
+              placeholder="Ko'rinishni tanlang"
             />
           </Form.Item>
 
