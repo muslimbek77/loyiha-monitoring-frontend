@@ -19,7 +19,7 @@ export default function RoleGuard({
 }: RoleGuardProps) {
   const { user } = useAuth();
   const role = user?.lavozim ?? "viewer";
-  const perms = PERMISSIONS[role] ?? PERMISSIONS.viewer;
+  const perms = user?.permissions ?? PERMISSIONS[role] ?? PERMISSIONS.viewer;
   // console.log(user);
 
   if (!perms[action]) {
