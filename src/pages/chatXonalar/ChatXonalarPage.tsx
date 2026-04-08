@@ -22,6 +22,7 @@ import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { buildAssetUrl } from "@/lib/media";
 
 interface OxirgiXabar {
   matn: string;
@@ -32,7 +33,7 @@ interface OxirgiXabar {
 interface Xona {
   id: number;
   nomi: string;
-  turi: "obyekt" | "guruh" | "shaxsiy";
+  turi: "obyekt" | "guruh" | "yakka";
   rasm: string | null;
   oxirgi_xabar: OxirgiXabar | null;
   oqilmagan_soni: number;
@@ -131,7 +132,7 @@ const XonaCard = ({
       <div className="relative flex-shrink-0">
         <Avatar
           size={48}
-          src={xona.rasm}
+          src={buildAssetUrl(xona.rasm)}
           style={{ backgroundColor: getAvatarColor(xona.nomi) }}
           className="font-semibold text-sm"
         >
@@ -327,7 +328,9 @@ const ChatXonalarPage = () => {
 
   const totalUnread =
     data?.results.reduce((sum, x) => sum + x.oqilmagan_soni, 0) ?? 0;
-  const canCreateChatRoom = Boolean(user?.is_staff);
+  const canCreateChatRoom = Boolean(
+    user?.is_superuser || user?.lavozim === "superadmin" || user?.lavozim === "rais",
+  );
 
   return (
     <div

@@ -1,20 +1,4 @@
-export const LAVOZIM_OPTIONS = [
-  { label: "Boshqaruv Raisi", value: "rais" },
-  { label: "Boshqaruv rais o'rinbosari", value: "rais_orinbosari" },
-  { label: "Boshqarma boshlig'i", value: "boshqarma_boshi" },
-  {
-    label: "Boshqarma boshlig'i o'rinbosari",
-    value: "boshqarma_boshligi_orinbosari",
-  },
-  { label: "Yetakchi muhandis", value: "yetakchi_muhandis" },
-  { label: "Muhandis", value: "muhandis" },
-  { label: "Uchastka Rahbari", value: "uchastka_rahbari" },
-  { label: "PTO", value: "pto" },
-  { label: "Buxgalter", value: "buxgalter" },
-  { label: "Iqtisodchi", value: "iqtisod" },
-  { label: "Kadrlar Xodimi", value: "kadr" },
-  { label: "Muhandis", value: "xodim" },
-];
+export { DEFAULT_LAVOZIM_OPTIONS as LAVOZIM_OPTIONS } from "@/lib/lavozim";
 export const UZBEKISTAN_LOCATIONS = {
   "Toshkent shahri": [
     "Yunusobod",

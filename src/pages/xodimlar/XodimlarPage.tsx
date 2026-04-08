@@ -10,6 +10,8 @@ import { useNavigate } from "react-router-dom";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import AddUserModal from "./AddUserModal";
+import { DEFAULT_LAVOZIM_OPTIONS, type LavozimOption } from "@/lib/lavozim";
+import { buildAssetUrl } from "@/lib/media";
 
 interface User {
   id: number;
@@ -28,18 +30,6 @@ interface PaginatedResponse {
   results: User[];
 }
 
-const LAVOZIM_OPTIONS = [
-  { value: "", label: "Barcha lavozimlar" },
-  { value: "rais", label: "Rais" },
-  { value: "rais_orinbosari", label: "Rais o'rinbosari" },
-  { value: "boshqarma_boshi", label: "Bosh bo'limi" },
-  { value: "boshqarma_boshligi_orinbosari", label: "Bo'lim o'rinbosari" },
-  { value: "yetakchi_muhandis", label: "Yetakchi muhandis" },
-  { value: "muhandis", label: "Muhandis" },
-  { value: "uchastka_rahbari", label: "Uchastka rahbari" },
-  { value: "xodim", label: "Prorab" },
-];
-
 const PAGE_SIZE = 10;
 
 const XodimlarPage = () => {
@@ -50,6 +40,10 @@ const XodimlarPage = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState("");
   const [lavozim, setLavozim] = useState("");
+  const [lavozimOptions, setLavozimOptions] = useState<LavozimOption[]>([
+    { value: "", label: "Barcha lavozimlar" },
+    ...DEFAULT_LAVOZIM_OPTIONS,
+  ]);
   const navigate = useNavigate();
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
@@ -80,6 +74,21 @@ const XodimlarPage = () => {
       setLoading(false);
     }
   }, [page, search, lavozim]);
+
+  useEffect(() => {
+    fetchLavozimlar();
+  }, []);
+
+  const fetchLavozimlar = async () => {
+    try {
+      const res = await api.get<LavozimOption[]>(API_ENDPOINTS.USERS.LAVOZIMLAR);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setLavozimOptions([{ value: "", label: "Barcha lavozimlar" }, ...res.data]);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -135,7 +144,7 @@ const XodimlarPage = () => {
         <Select
           value={lavozim ?? ""}
           onChange={(value) => handleLavozimChange(value ?? "")}
-          options={LAVOZIM_OPTIONS}
+          options={lavozimOptions}
           className="min-w-[220px] py-1.5! rounded-xl!"
           size="middle"
         />
@@ -199,9 +208,7 @@ const XodimlarPage = () => {
                           {user.avatar ? (
                             <img
                               src={
-                                user.avatar?.startsWith("http://")
-                                  ? user.avatar.replace("http://", "https://")
-                                  : user.avatar
+                                buildAssetUrl(user.avatar)
                               }
                               alt={user.fio}
                               className="w-full h-full rounded-full object-cover"

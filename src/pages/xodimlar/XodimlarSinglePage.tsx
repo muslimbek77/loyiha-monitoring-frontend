@@ -27,6 +27,7 @@ import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { LAVOZIM_OPTIONS } from "@/shared/components/const/constValues";
 import { usePermissions } from "@/features/auth/hooks/usePermissions";
+import { buildAssetUrl } from "@/lib/media";
 
 interface User {
   id: number;
@@ -268,9 +269,7 @@ const XodimlarSinglePage = () => {
               {user.avatar ? (
                 <img
                   src={
-                    user.avatar?.startsWith("http://")
-                      ? user.avatar.replace("http://", "https://")
-                      : user.avatar
+                    buildAssetUrl(user.avatar)
                   }
                   alt={user.fio}
                   className="w-16 h-16 rounded-2xl object-cover border border-slate-200"

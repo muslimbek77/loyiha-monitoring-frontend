@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
   USERS: {
     LIST: "/auth/users/",
     LIST_ALL: "/auth/users/?all=true",
+    LAVOZIMLAR: "/auth/users/lavozimlar/",
     CREATE: "/auth/users/",
     DETAIL: (id: string | number) => `/auth/users/${id}/`,
     UPDATE: (id: string | number) => `/auth/users/${id}/`,
@@ -16,6 +17,11 @@ export const API_ENDPOINTS = {
     PROFILE: "/auth/profile/",
     CHANGE_PASSWORD: "/auth/password/change/",
     BOSHQARMA_XODIMLARI: "/auth/users/boshqarma_xodimlari/",
+  },
+
+  LAVOZIMLAR: {
+    LIST: "/auth/lavozimlar/",
+    DETAIL: (id: string | number) => `/auth/lavozimlar/${id}/`,
   },
 
   DASHBOARD: {
@@ -32,6 +38,7 @@ export const API_ENDPOINTS = {
     LIST_ALL: "/core/boshqarmalar/?all=true",
     DETAIL: (id: string | number) => `/core/boshqarmalar/${id}/`,
     STATISTIKA: (id: string | number) => `/core/boshqarmalar/${id}/statistika/`,
+    OVERVIEW: (id: string | number) => `/core/boshqarmalar/${id}/overview/`,
   },
 
   HUJJATLAR: {
