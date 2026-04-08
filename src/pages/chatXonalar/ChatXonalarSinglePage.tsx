@@ -23,11 +23,15 @@ import {
   UserAddOutlined,
   MessageOutlined,
   DeleteOutlined,
+  EditOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { buildAssetUrl } from "@/lib/media";
+import { getLavozimColor, getLavozimLabel } from "@/lib/lavozim";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,11 +49,14 @@ interface Ishtirokchi {
 interface XonaDetail {
   id: number;
   nomi: string;
-  turi: "obyekt" | "guruh" | "shaxsiy";
+  turi: "obyekt" | "guruh" | "yakka";
   turi_display: string;
   obyekt: number | null;
   rasm: string | null;
   ishtirokchilar: Ishtirokchi[];
+  can_manage_settings?: boolean;
+  can_manage_participants?: boolean;
+  current_bildirishnoma?: boolean;
 }
 
 interface Xabar {
@@ -68,27 +75,6 @@ interface User {
   username?: string;
   email?: string;
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const LAVOZIM_LABELS: Record<string, string> = {
-  rais: "Rais",
-  rais_orinbosari: "Rais o'rinbosari",
-  direktor: "Direktor",
-  muhandis: "Muhandis",
-  ishchi: "Ishchi",
-};
-
-const getLavozimLabel = (lavozim: string) => LAVOZIM_LABELS[lavozim] ?? lavozim;
-
-const getLavozimColor = (lavozim: string): string =>
-  ({
-    rais: "red",
-    rais_orinbosari: "orange",
-    direktor: "volcano",
-    muhandis: "blue",
-    ishchi: "default",
-  })[lavozim] ?? "default";
 
 const getAvatarColor = (name: string) => {
   const colors = [
@@ -134,7 +120,7 @@ const IshtirokchiCard = ({
     <div className="relative flex-shrink-0">
       <Avatar
         size={44}
-        src={ishtirokchi.avatar}
+        src={buildAssetUrl(ishtirokchi.avatar)}
         style={{ backgroundColor: getAvatarColor(ishtirokchi.fio) }}
         className="font-semibold text-sm"
       >
@@ -214,7 +200,7 @@ const XabarItem = ({ xabar }: { xabar: Xabar }) => (
   <div className="flex items-start gap-2 px-4 py-2 hover:bg-gray-50 transition-colors">
     <Avatar
       size={32}
-      src={xabar.yuboruvchi_avatar}
+      src={buildAssetUrl(xabar.yuboruvchi_avatar)}
       style={{
         backgroundColor: getAvatarColor(xabar.yuboruvchi_fio),
         flexShrink: 0,
@@ -275,6 +261,9 @@ const ChatXonaSinglePage = () => {
 
   // ── Leave room
   const [leaveLoading, setLeaveLoading] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [renameModalOpen, setRenameModalOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
 
   // ── Fetch room detail
   useEffect(() => {
@@ -285,6 +274,7 @@ const ChatXonaSinglePage = () => {
       try {
         const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
         setData(res.data);
+        setRenameValue(res.data.nomi);
       } catch (err: any) {
         setError(
           err?.response?.data?.detail ?? err.message ?? "Xatolik yuz berdi",
@@ -414,6 +404,64 @@ const ChatXonaSinglePage = () => {
     }
   };
 
+  const handleToggleNotification = async () => {
+    if (!id || !data) return;
+    setSettingsLoading(true);
+    try {
+      const res = await api.patch(API_ENDPOINTS.CHAT_XONALAR.SOZLAMALAR(id), {
+        bildirishnoma: !(data.current_bildirishnoma ?? true),
+      });
+      setData((prev) =>
+        prev
+          ? { ...prev, current_bildirishnoma: res.data.bildirishnoma }
+          : prev,
+      );
+      messageApi.success("Bildirishnoma sozlamasi saqlandi");
+    } catch (err: any) {
+      messageApi.error(
+        err?.response?.data?.detail ?? "Sozlamani saqlashda xatolik",
+      );
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleRenameRoom = async () => {
+    if (!id || !renameValue.trim()) return;
+    setSettingsLoading(true);
+    try {
+      await api.patch(API_ENDPOINTS.CHAT_XONALAR.SOZLAMALAR(id), {
+        nomi: renameValue.trim(),
+      });
+      const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
+      setData(res.data);
+      setRenameModalOpen(false);
+      messageApi.success("Chat xona nomi yangilandi");
+    } catch (err: any) {
+      messageApi.error(
+        err?.response?.data?.detail ?? "Nomni saqlashda xatolik",
+      );
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleDeleteRoom = async () => {
+    if (!id) return;
+    setSettingsLoading(true);
+    try {
+      await api.delete(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
+      messageApi.success("Chat xona o'chirildi");
+      navigate("/chats");
+    } catch (err: any) {
+      messageApi.error(
+        err?.response?.data?.detail ?? "Chat xonani o'chirishda xatolik",
+      );
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
   // ─── API: POST leave room ────────────────────────────────────────────────────
 
   const handleChiqish = async () => {
@@ -446,7 +494,8 @@ const ChatXonaSinglePage = () => {
       ?.oqilmagan_soni ?? 0;
   const notifOn =
     data?.ishtirokchilar.filter((i) => i.bildirishnoma).length ?? 0;
-  const canManageParticipants = Boolean(data?.turi === "guruh");
+  const canManageParticipants = Boolean(data?.can_manage_participants);
+  const canManageSettings = Boolean(data?.can_manage_settings);
   const availableUsers = users.filter(
     (candidate) =>
       !data?.ishtirokchilar.some(
@@ -474,7 +523,7 @@ const ChatXonaSinglePage = () => {
           <div className="relative flex-shrink-0">
             <Avatar
               size={42}
-              src={data?.rasm}
+              src={buildAssetUrl(data?.rasm)}
               style={{
                 backgroundColor: data ? getAvatarColor(data.nomi) : "#ccc",
               }}
@@ -515,6 +564,33 @@ const ChatXonaSinglePage = () => {
 
           {data && (
             <div className="flex items-center gap-1 flex-shrink-0">
+              <Tooltip
+                title={
+                  data.current_bildirishnoma
+                    ? "Bildirishnomani o'chirish"
+                    : "Bildirishnomani yoqish"
+                }
+              >
+                <Button
+                  type="text"
+                  icon={
+                    data.current_bildirishnoma ? <BellFilled /> : <BellOutlined />
+                  }
+                  size="small"
+                  onClick={handleToggleNotification}
+                  loading={settingsLoading}
+                />
+              </Tooltip>
+              {canManageSettings && (
+                <Tooltip title="Xona nomini o'zgartirish">
+                  <Button
+                    type="text"
+                    icon={<EditOutlined />}
+                    size="small"
+                    onClick={() => setRenameModalOpen(true)}
+                  />
+                </Tooltip>
+              )}
               <Tooltip title="Ishtirokchi qo'shish">
                 <Button
                   type="text"
@@ -525,6 +601,22 @@ const ChatXonaSinglePage = () => {
                   disabled={!canManageParticipants}
                 />
               </Tooltip>
+              {canManageSettings && (
+                <Popconfirm
+                  title="Chat xonani o'chirasizmi?"
+                  okText="O'chirish"
+                  cancelText="Bekor qilish"
+                  onConfirm={handleDeleteRoom}
+                >
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    size="small"
+                    loading={settingsLoading}
+                  />
+                </Popconfirm>
+              )}
             </div>
           )}
         </div>
@@ -542,7 +634,7 @@ const ChatXonaSinglePage = () => {
               </div>
             )}
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <BellFilled className="text-green-400" />
+              <SettingOutlined className="text-green-400" />
               <span>{notifOn} bildirishnoma yoq.</span>
             </div>
           </div>
@@ -740,6 +832,23 @@ const ChatXonaSinglePage = () => {
             </p>
           )}
         </div>
+      </Modal>
+
+      <Modal
+        title="Chat xona nomini o'zgartirish"
+        open={renameModalOpen}
+        onCancel={() => setRenameModalOpen(false)}
+        onOk={handleRenameRoom}
+        okText="Saqlash"
+        cancelText="Bekor qilish"
+        confirmLoading={settingsLoading}
+      >
+        <Input
+          value={renameValue}
+          onChange={(event) => setRenameValue(event.target.value)}
+          placeholder="Chat xona nomi"
+          maxLength={255}
+        />
       </Modal>
     </div>
   );

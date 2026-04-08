@@ -11,35 +11,7 @@ import {
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
-
-const LAVOZIM_GROUP_OPTIONS = [
-  {
-    label: "Rahbariyat",
-    options: [
-      { value: "rais", label: "Rais" },
-      { value: "rais_orinbosari", label: "Rais o'rinbosari" },
-    ],
-  },
-  {
-    label: "Boshqarma ichki bo'limi",
-    options: [
-      { value: "boshqarma_boshi", label: "Bosh bo'limi" },
-      {
-        value: "boshqarma_boshligi_orinbosari",
-        label: "Bo'lim o'rinbosari",
-      },
-      { value: "yetakchi_muhandis", label: "Yetakchi muhandis" },
-      { value: "muhandis", label: "Muhandis" },
-    ],
-  },
-  {
-    label: "Ishlab chiqarish xodimlari",
-    options: [
-      { value: "uchastka_rahbari", label: "Uchastka rahbari" },
-      { value: "xodim", label: "Prorab" },
-    ],
-  },
-];
+import { DEFAULT_LAVOZIM_OPTIONS, type LavozimOption } from "@/lib/lavozim";
 
 interface Boshqarma {
   id: number;
@@ -58,10 +30,13 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
   const [loading, setLoading] = useState(false);
   const [boshqarmalar, setBoshqarmalar] = useState<Boshqarma[]>([]);
   const [boshqarmaLoading, setBoshqarmaLoading] = useState(false);
+  const [lavozimlar, setLavozimlar] =
+    useState<LavozimOption[]>(DEFAULT_LAVOZIM_OPTIONS);
 
   useEffect(() => {
     if (open) {
       fetchBoshqarmalar();
+      fetchLavozimlar();
     }
   }, [open]);
 
@@ -75,6 +50,17 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
       message.error("Boshqarmalar yuklanmadi");
     } finally {
       setBoshqarmaLoading(false);
+    }
+  };
+
+  const fetchLavozimlar = async () => {
+    try {
+      const res = await api.get<LavozimOption[]>(API_ENDPOINTS.USERS.LAVOZIMLAR);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setLavozimlar(res.data);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -179,14 +165,14 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
               name="boshqarma"
               label={
                 <span className="text-sm font-medium text-gray-700">
-                  Kategoriya
+                  Boshqarma
                 </span>
               }
               // rules={[{ required: true, message: "Boshqarmani tanlang" }]}
             >
               <Select
                 allowClear
-                placeholder="Kategoriyani tanlang"
+                placeholder="Boshqarmani tanlang"
                 size="large"
                 loading={boshqarmaLoading}
                 suffixIcon={
@@ -231,7 +217,7 @@ const AddUserModal = ({ open, onClose, onSuccess }: AddUserModalProps) => {
               <Select
                 placeholder="Lavozimni tanlang"
                 size="large"
-                options={LAVOZIM_GROUP_OPTIONS}
+                options={lavozimlar}
               />
             </Form.Item>
           </Col>
