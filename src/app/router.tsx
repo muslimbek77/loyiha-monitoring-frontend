@@ -46,9 +46,6 @@ const XodimlarPage = lazy(() => import("../pages/xodimlar/XodimlarPage"));
 const XodimlarSinglePage = lazy(
   () => import("../pages/xodimlar/XodimlarSinglePage"),
 );
-const LavozimlarPage = lazy(
-  () => import("../pages/lavozimlar/LavozimlarPage"),
-);
 const ChatXonalarPage = lazy(
   () => import("../pages/chatXonalar/ChatXonalarPage"),
 );
@@ -138,14 +135,6 @@ export const router = createBrowserRouter([
         element: (
           <RoleGuard action="canManageUsers" redirectTo="/unauthorized">
             {withSuspense(<XodimlarSinglePage />)}
-          </RoleGuard>
-        ),
-      },
-      {
-        path: "lavozimlar",
-        element: (
-          <RoleGuard action="canManageUsers" redirectTo="/unauthorized">
-            {withSuspense(<LavozimlarPage />)}
           </RoleGuard>
         ),
       },

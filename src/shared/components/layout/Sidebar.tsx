@@ -9,7 +9,6 @@ import {
   Users,
   MessageSquare,
   Pin,
-  ShieldCheck,
 } from "lucide-react";
 import { usePermissions } from "@/features/auth/hooks/usePermissions";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -53,12 +52,6 @@ const navItems: {
     label: "Xodimlar",
     path: "/users",
     icon: Users,
-    permission: "canManageUsers",
-  },
-  {
-    label: "Lavozimlar",
-    path: "/lavozimlar",
-    icon: ShieldCheck,
     permission: "canManageUsers",
   },
 ];

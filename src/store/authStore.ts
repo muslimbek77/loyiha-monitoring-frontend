@@ -15,6 +15,7 @@ export type AuthUser = {
   telegram_id?: string;
   lavozim?: string;
   lavozim_display?: string;
+  permissions?: Record<string, boolean>;
   boshqarma?: string;
   is_active?: boolean;
   is_staff?: boolean;
