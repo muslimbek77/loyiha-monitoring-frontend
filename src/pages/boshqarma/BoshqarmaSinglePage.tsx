@@ -118,6 +118,8 @@ const BoshqarmaSinglePage = () => {
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<KategoriyaType | null>(null);
   const [saving, setSaving] = useState(false);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [selectedDocuments, setSelectedDocuments] = useState<HujjatType[]>([]);
   const [editForm] = Form.useForm();
   const [categoryForm] = Form.useForm();
   const [documentForm] = Form.useForm();
@@ -167,29 +169,43 @@ const BoshqarmaSinglePage = () => {
     (item) => item.id === selectedKategoriyaId,
   );
 
-  const categoryDocumentIds = useMemo(() => {
-    if (!detail || !selectedKategoriyaId) return new Set<number>();
-    const ids = new Set<number>([selectedKategoriyaId]);
-    let updated = true;
-    while (updated) {
-      updated = false;
-      detail.kategoriyalar.forEach((item) => {
-        if (item.parent && ids.has(item.parent) && !ids.has(item.id)) {
-          ids.add(item.id);
-          updated = true;
-        }
-      });
-    }
-    return ids;
-  }, [detail, selectedKategoriyaId]);
-
   const filteredDocuments = useMemo(() => {
     if (!detail) return [];
     if (!selectedKategoriyaId) return detail.hujjatlar;
-    return detail.hujjatlar.filter(
-      (item) => item.kategoriya && categoryDocumentIds.has(item.kategoriya),
-    );
-  }, [categoryDocumentIds, detail, selectedKategoriyaId]);
+    return selectedDocuments;
+  }, [detail, selectedDocuments, selectedKategoriyaId]);
+
+  useEffect(() => {
+    if (!detail || !selectedKategoriyaId) {
+      setSelectedDocuments(detail?.hujjatlar ?? []);
+      return;
+    }
+
+    const fetchCategoryDocuments = async () => {
+      try {
+        setDocumentsLoading(true);
+        const res = await api.get<HujjatType[] | { results?: HujjatType[] }>(
+          API_ENDPOINTS.HUJJATLAR.KATEGORIYA_HUJJATLARI,
+          {
+            params: {
+              kategoriya: selectedKategoriyaId,
+              boshqarma: detail.boshqarma.id,
+            },
+          },
+        );
+        const items = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+        setSelectedDocuments(items);
+      } catch (error) {
+        console.error(error);
+        messageApi.error("Papka hujjatlarini yuklashda xatolik");
+        setSelectedDocuments([]);
+      } finally {
+        setDocumentsLoading(false);
+      }
+    };
+
+    fetchCategoryDocuments();
+  }, [detail?.boshqarma.id, detail, selectedKategoriyaId]);
 
   const handleEditSubmit = async () => {
     if (!id) return;
@@ -519,7 +535,11 @@ const BoshqarmaSinglePage = () => {
               </div>
             </div>
 
-            {filteredDocuments.length === 0 ? (
+            {documentsLoading ? (
+              <div className="py-16">
+                <Spin />
+              </div>
+            ) : filteredDocuments.length === 0 ? (
               <EmptyState text="Tanlangan papkada hujjat topilmadi" />
             ) : (
               <div className="space-y-3">
