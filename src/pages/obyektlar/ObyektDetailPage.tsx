@@ -53,6 +53,9 @@ interface ObyektHujjat {
   holat_display: string;
   fayl_turi: string;
   muddat: string;
+  boshqarma_nomi?: string;
+  kategoriya_nomi?: string;
+  kategoriya_full_path?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -160,6 +163,37 @@ const formatDate = (val: string) => {
   return `${d}.${m}.${y}`;
 };
 
+const buildDocumentGroups = (docs: ObyektHujjat[]) => {
+  const groups = new Map<
+    string,
+    Map<string, ObyektHujjat[]>
+  >();
+
+  docs.forEach((doc) => {
+    const department = doc.boshqarma_nomi || "Boshqarma ko'rsatilmagan";
+    const category =
+      doc.kategoriya_full_path || doc.kategoriya_nomi || "Papka ko'rsatilmagan";
+
+    if (!groups.has(department)) {
+      groups.set(department, new Map<string, ObyektHujjat[]>());
+    }
+
+    const categoryMap = groups.get(department)!;
+    if (!categoryMap.has(category)) {
+      categoryMap.set(category, []);
+    }
+    categoryMap.get(category)!.push(doc);
+  });
+
+  return Array.from(groups.entries()).map(([department, categoryMap]) => ({
+    department,
+    categories: Array.from(categoryMap.entries()).map(([category, items]) => ({
+      category,
+      items,
+    })),
+  }));
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const ObyektDetailPage = () => {
@@ -255,6 +289,8 @@ const ObyektDetailPage = () => {
         : `${daysLeft} kun muddat qoldi.`
       : "Tugash muddati ko'rsatilmagan.",
   ].join(" ");
+
+  const hujjatGroups = buildDocumentGroups(hujjatlar);
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
@@ -494,24 +530,55 @@ const ObyektDetailPage = () => {
         <SectionDivider title="Biriktirilgan hujjatlar" />
         {hujjatlar.length ? (
           <div className="space-y-3">
-            {hujjatlar.slice(0, 6).map((doc) => (
-              <button
-                key={doc.id}
-                onClick={() => navigate(`/hujjatlar/${doc.id}`)}
-                className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 px-4 py-3 text-left transition hover:border-blue-200 hover:bg-slate-50"
+            {hujjatGroups.map((group) => (
+              <div
+                key={group.department}
+                className="rounded-2xl border border-slate-200 overflow-hidden"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-800">
-                    {doc.nomi}
+                <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-800">
+                    {group.department}
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
-                    {doc.fayl_turi} • {formatDate(doc.muddat)}
+                    {group.categories.reduce((sum, category) => sum + category.items.length, 0)} ta hujjat
                   </p>
                 </div>
-                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                  {doc.holat_display}
-                </span>
-              </button>
+
+                <div className="p-3 space-y-3">
+                  {group.categories.map((category) => (
+                    <div key={`${group.department}-${category.category}`} className="space-y-2">
+                      <div className="flex items-center justify-between px-1">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                          {category.category}
+                        </p>
+                        <span className="text-xs text-slate-400">
+                          {category.items.length} ta
+                        </span>
+                      </div>
+
+                      {category.items.map((doc) => (
+                        <button
+                          key={doc.id}
+                          onClick={() => navigate(`/hujjatlar/${doc.id}`)}
+                          className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 px-4 py-3 text-left transition hover:border-blue-200 hover:bg-slate-50"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-800">
+                              {doc.nomi}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-400">
+                              {doc.fayl_turi} • {formatDate(doc.muddat)}
+                            </p>
+                          </div>
+                          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                            {doc.holat_display}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         ) : (

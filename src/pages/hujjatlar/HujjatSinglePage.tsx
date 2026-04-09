@@ -350,14 +350,14 @@ const HujjatSinglePage = () => {
   }
 
   const reviewSummary = [
-    data.is_kechikkan ? "Muddat o'tgan, nazorat talab etiladi." : "Muddat doirasida.",
-    data.holat === "kutilmoqda"
-      ? "Tasdiqlash jarayoni kutilyapti."
-      : `Holati: ${data.holat_display}.`,
-    data.versiya > 1
-      ? `${data.versiya} ta versiya yuritilgan.`
-      : "Bu birinchi versiya.",
-  ].join(" ");
+    data.is_kechikkan
+      ? "Muddat o'tgan, nazorat talab etiladi."
+      : "Muddat me'yorida.",
+    `Holati: ${data.holat_display}.`,
+    data.versiya > 1 ? `${data.versiya} ta versiya mavjud.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8 rounded-xl">
