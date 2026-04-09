@@ -62,6 +62,12 @@ interface User {
   fio: string;
 }
 
+const getApiErrorMessage = (err: any, fallback: string) =>
+  err?.response?.data?.detail ??
+  err?.response?.data?.error ??
+  err?.response?.data?.message ??
+  fallback;
+
 const formatTime = (isoString: string) => {
   const date = new Date(isoString);
   const now = new Date();
@@ -270,7 +276,7 @@ const ChatXonalarPage = () => {
     setUsersLoading(true);
     try {
       const res = await api.get<{ results: User[] } | User[]>(
-        API_ENDPOINTS.USERS.LIST,
+        API_ENDPOINTS.USERS.LIST_ALL,
       );
       const list = Array.isArray(res.data) ? res.data : res.data.results;
       setUsers(list);
@@ -299,19 +305,11 @@ const ChatXonalarPage = () => {
       messageApi.success("Xona muvaffaqiyatli yaratildi");
       setCreateModal(false);
       createForm.resetFields();
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              count: prev.count + 1,
-              results: [res.data, ...prev.results],
-            }
-          : prev,
-      );
+      await fetchXonalar();
+      setActiveId(res.data.id);
+      navigate(`/chats/${res.data.id}`);
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.detail ?? "Xona yaratishda xatolik",
-      );
+      messageApi.error(getApiErrorMessage(err, "Xona yaratishda xatolik"));
     } finally {
       setCreateLoading(false);
     }
@@ -329,7 +327,7 @@ const ChatXonalarPage = () => {
   const totalUnread =
     data?.results.reduce((sum, x) => sum + x.oqilmagan_soni, 0) ?? 0;
   const canCreateChatRoom = Boolean(
-    user?.is_superuser || user?.lavozim === "superadmin" || user?.lavozim === "rais",
+    user?.is_superuser || user?.permissions?.canManageChatSettings,
   );
 
   return (
