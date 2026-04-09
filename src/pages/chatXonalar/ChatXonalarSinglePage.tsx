@@ -76,6 +76,12 @@ interface User {
   email?: string;
 }
 
+const getApiErrorMessage = (err: any, fallback: string) =>
+  err?.response?.data?.detail ??
+  err?.response?.data?.error ??
+  err?.response?.data?.message ??
+  fallback;
+
 const getAvatarColor = (name: string) => {
   const colors = [
     "#1677ff",
@@ -265,6 +271,14 @@ const ChatXonaSinglePage = () => {
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
 
+  const fetchDetail = async () => {
+    if (!id) return null;
+    const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
+    setData(res.data);
+    setRenameValue(res.data.nomi);
+    return res.data;
+  };
+
   // ── Fetch room detail
   useEffect(() => {
     if (!id) return;
@@ -272,13 +286,9 @@ const ChatXonaSinglePage = () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
-        setData(res.data);
-        setRenameValue(res.data.nomi);
+        await fetchDetail();
       } catch (err: any) {
-        setError(
-          err?.response?.data?.detail ?? err.message ?? "Xatolik yuz berdi",
-        );
+        setError(getApiErrorMessage(err, err?.message ?? "Xatolik yuz berdi"));
       } finally {
         setLoading(false);
       }
@@ -298,7 +308,7 @@ const ChatXonaSinglePage = () => {
     const fetchUsers = async () => {
       setFetchingUsers(true);
       try {
-        const res = await api.get(API_ENDPOINTS.USERS.LIST);
+        const res = await api.get(API_ENDPOINTS.USERS.LIST_ALL);
         const d = res.data;
         setUsers(Array.isArray(d) ? d : (d.results ?? []));
       } catch {
@@ -325,15 +335,10 @@ const ChatXonaSinglePage = () => {
       const res = await api.get<{ results: Xabar[] }>(
         API_ENDPOINTS.CHAT_XONALAR.XABARLAR(id),
       );
-      setXabarlar(res.data?.results ?? []);
-      const detailRes = await api.get<XonaDetail>(
-        API_ENDPOINTS.CHAT_XONALAR.DETAIL(id),
-      );
-      setData(detailRes.data);
+      setXabarlar([...(res.data?.results ?? [])].reverse());
+      await fetchDetail();
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.detail ?? "Xabarlarni yuklashda xatolik",
-      );
+      messageApi.error(getApiErrorMessage(err, "Xabarlarni yuklashda xatolik"));
     } finally {
       setXabarlarLoading(false);
     }
@@ -353,14 +358,9 @@ const ChatXonaSinglePage = () => {
       );
       setXabarlar((prev) => [...(Array.isArray(prev) ? prev : []), res.data]);
       setYangiXabar("");
-      const detailRes = await api.get<XonaDetail>(
-        API_ENDPOINTS.CHAT_XONALAR.DETAIL(id),
-      );
-      setData(detailRes.data);
+      await fetchDetail();
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.detail ?? "Xabar yuborishda xatolik",
-      );
+      messageApi.error(getApiErrorMessage(err, "Xabar yuborishda xatolik"));
     } finally {
       setSending(false);
     }
@@ -372,17 +372,18 @@ const ChatXonaSinglePage = () => {
     if (!id || !selectedUserId) return;
     setAddLoading(true);
     try {
-      await api.post(API_ENDPOINTS.CHAT_XONALAR.ISHTIROKCHI_QOSHISH(id), {
+      const res = await api.post(API_ENDPOINTS.CHAT_XONALAR.ISHTIROKCHI_QOSHISH(id), {
         foydalanuvchi_id: selectedUserId,
       });
       messageApi.success("Ishtirokchi muvaffaqiyatli qo'shildi");
       closeAddModal();
-      const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
-      setData(res.data);
+      if (res.data?.xona) {
+        setData(res.data.xona);
+      } else {
+        await fetchDetail();
+      }
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.detail ?? "Ishtirokchi qo'shishda xatolik",
-      );
+      messageApi.error(getApiErrorMessage(err, "Ishtirokchi qo'shishda xatolik"));
     } finally {
       setAddLoading(false);
     }
@@ -391,16 +392,17 @@ const ChatXonaSinglePage = () => {
   const handleRemoveIshtirokchi = async (userId: number) => {
     if (!id) return;
     try {
-      await api.post(API_ENDPOINTS.CHAT_XONALAR.ISHTIROKCHI_OCHIRISH(id), {
+      const res = await api.post(API_ENDPOINTS.CHAT_XONALAR.ISHTIROKCHI_OCHIRISH(id), {
         foydalanuvchi_id: userId,
       });
       messageApi.success("Ishtirokchi guruhdan o'chirildi");
-      const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
-      setData(res.data);
+      if (res.data?.xona) {
+        setData(res.data.xona);
+      } else {
+        await fetchDetail();
+      }
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.detail ?? "Ishtirokchini o'chirishda xatolik",
-      );
+      messageApi.error(getApiErrorMessage(err, "Ishtirokchini o'chirishda xatolik"));
     }
   };
 
@@ -418,9 +420,7 @@ const ChatXonaSinglePage = () => {
       );
       messageApi.success("Bildirishnoma sozlamasi saqlandi");
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.detail ?? "Sozlamani saqlashda xatolik",
-      );
+      messageApi.error(getApiErrorMessage(err, "Sozlamani saqlashda xatolik"));
     } finally {
       setSettingsLoading(false);
     }
@@ -433,14 +433,11 @@ const ChatXonaSinglePage = () => {
       await api.patch(API_ENDPOINTS.CHAT_XONALAR.SOZLAMALAR(id), {
         nomi: renameValue.trim(),
       });
-      const res = await api.get<XonaDetail>(API_ENDPOINTS.CHAT_XONALAR.DETAIL(id));
-      setData(res.data);
+      await fetchDetail();
       setRenameModalOpen(false);
       messageApi.success("Chat xona nomi yangilandi");
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.detail ?? "Nomni saqlashda xatolik",
-      );
+      messageApi.error(getApiErrorMessage(err, "Nomni saqlashda xatolik"));
     } finally {
       setSettingsLoading(false);
     }
@@ -454,9 +451,7 @@ const ChatXonaSinglePage = () => {
       messageApi.success("Chat xona o'chirildi");
       navigate("/chats");
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.detail ?? "Chat xonani o'chirishda xatolik",
-      );
+      messageApi.error(getApiErrorMessage(err, "Chat xonani o'chirishda xatolik"));
     } finally {
       setSettingsLoading(false);
     }
@@ -472,9 +467,7 @@ const ChatXonaSinglePage = () => {
       messageApi.success("Xonadan muvaffaqiyatli chiqdingiz");
       navigate(-1);
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.detail ?? "Chiqishda xatolik yuz berdi",
-      );
+      messageApi.error(getApiErrorMessage(err, "Chiqishda xatolik yuz berdi"));
     } finally {
       setLeaveLoading(false);
     }
@@ -598,7 +591,7 @@ const ChatXonaSinglePage = () => {
                   size="small"
                   className="text-blue-500"
                   onClick={() => setAddModal(true)}
-                  disabled={!canManageParticipants}
+                  disabled={!canManageParticipants || data.turi !== "guruh"}
                 />
               </Tooltip>
               {canManageSettings && (
@@ -770,7 +763,7 @@ const ChatXonaSinglePage = () => {
                       icon={<UserAddOutlined />}
                       className="text-xs p-0 h-auto"
                       onClick={() => setAddModal(true)}
-                      disabled={!canManageParticipants}
+                      disabled={!canManageParticipants || data.turi !== "guruh"}
                     >
                       Qo'shish
                     </Button>
@@ -812,7 +805,7 @@ const ChatXonaSinglePage = () => {
       >
         <div className="space-y-3 pt-2">
           <p className="text-sm text-gray-500">
-            Guruh ichidan faqat foydalanuvchini tanlab qo'shing.
+            Faqat guruh chatiga yangi ishtirokchi qo'shiladi.
           </p>
           <Select
             showSearch

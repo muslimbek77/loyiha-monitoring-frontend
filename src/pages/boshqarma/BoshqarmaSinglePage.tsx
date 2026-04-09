@@ -116,6 +116,7 @@ const BoshqarmaSinglePage = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<KategoriyaType | null>(null);
   const [saving, setSaving] = useState(false);
   const [editForm] = Form.useForm();
   const [categoryForm] = Form.useForm();
@@ -222,24 +223,54 @@ const BoshqarmaSinglePage = () => {
     }
   };
 
-  const handleCreateCategory = async () => {
+  const openCreateCategoryModal = () => {
+    setEditingCategory(null);
+    categoryForm.resetFields();
+    categoryForm.setFieldsValue({
+      parent: selectedKategoriyaId ?? undefined,
+    });
+    setCategoryModalOpen(true);
+  };
+
+  const openEditCategoryModal = (category: KategoriyaType) => {
+    setEditingCategory(category);
+    categoryForm.setFieldsValue({
+      nomi: category.nomi,
+      parent: category.parent ?? undefined,
+      tavsif: "",
+    });
+    setCategoryModalOpen(true);
+  };
+
+  const handleSaveCategory = async () => {
     if (!detail) return;
     try {
       const values = await categoryForm.validateFields();
       setSaving(true);
-      await api.post(API_ENDPOINTS.KATEGORIYALAR.LIST, {
+      const payload = {
         nomi: values.nomi,
         boshqarma: detail.boshqarma.id,
         parent: values.parent ?? null,
         tavsif: values.tavsif ?? "",
-      });
-      messageApi.success("Kategoriya yaratildi");
+      };
+
+      if (editingCategory) {
+        await api.put(API_ENDPOINTS.KATEGORIYALAR.DETAIL(editingCategory.id), payload);
+        messageApi.success("Papka yangilandi");
+      } else {
+        await api.post(API_ENDPOINTS.KATEGORIYALAR.LIST, payload);
+        messageApi.success("Papka yaratildi");
+      }
+
       setCategoryModalOpen(false);
       categoryForm.resetFields();
+      setEditingCategory(null);
       fetchOverview();
     } catch (error) {
       console.error(error);
-      messageApi.error("Kategoriya yaratishda xatolik");
+      messageApi.error(
+        editingCategory ? "Papkani saqlashda xatolik" : "Papka yaratishda xatolik",
+      );
     } finally {
       setSaving(false);
     }
@@ -449,7 +480,7 @@ const BoshqarmaSinglePage = () => {
               <Button
                 type="text"
                 icon={<PlusOutlined />}
-                onClick={() => setCategoryModalOpen(true)}
+                onClick={openCreateCategoryModal}
               />
             </div>
             <div className="space-y-1">
@@ -472,13 +503,20 @@ const BoshqarmaSinglePage = () => {
                     "Boshqarma hujjatlari kategoriya va papkalar bo'yicha ko'rsatiladi."}
                 </p>
               </div>
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                onClick={() => setDocumentModalOpen(true)}
-              >
-                Hujjat yuklash
-              </Button>
+              <div className="flex items-center gap-2">
+                {selectedKategoriya && (
+                  <Button icon={<EditOutlined />} onClick={() => openEditCategoryModal(selectedKategoriya)}>
+                    Papkani tahrirlash
+                  </Button>
+                )}
+                <Button
+                  type="primary"
+                  icon={<UploadOutlined />}
+                  onClick={() => setDocumentModalOpen(true)}
+                >
+                  Hujjat yuklash
+                </Button>
+              </div>
             </div>
 
             {filteredDocuments.length === 0 ? (
@@ -548,11 +586,15 @@ const BoshqarmaSinglePage = () => {
       </Modal>
 
       <Modal
-        title="Kategoriya yaratish"
+        title={editingCategory ? "Papkani tahrirlash" : "Papka yaratish"}
         open={categoryModalOpen}
-        onCancel={() => setCategoryModalOpen(false)}
-        onOk={handleCreateCategory}
-        okText="Yaratish"
+        onCancel={() => {
+          setCategoryModalOpen(false);
+          setEditingCategory(null);
+          categoryForm.resetFields();
+        }}
+        onOk={handleSaveCategory}
+        okText={editingCategory ? "Saqlash" : "Yaratish"}
         cancelText="Bekor qilish"
         confirmLoading={saving}
       >
