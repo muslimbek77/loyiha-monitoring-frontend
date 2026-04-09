@@ -604,7 +604,7 @@ const KategoriyalarPage = () => {
 
   const fetchKategoriyalar = async () => {
     try {
-      const { data } = await api.get(API_ENDPOINTS.KATEGORIYALAR.BOSHQARMA);
+      const { data } = await api.get(API_ENDPOINTS.HUJJATLAR.BOSHQARMA_KATEGORIYALARI);
       setKategoriyalar(Array.isArray(data) ? data : (data.results ?? []));
       setFetchError("");
     } catch (e) {
@@ -690,7 +690,9 @@ const KategoriyalarPage = () => {
       flattenAll(k.children || []);
     });
   flattenAll(kategoriyalar);
-  const totalDocs = flatAll.reduce((s, k) => s + (k.hujjatlar_soni || 0), 0);
+  const totalDocs = kategoriyalar.reduce((sum, kategoriya) => {
+    return sum + (kategoriya.hujjatlar_soni || 0);
+  }, 0);
 
   const statCards = selectedDetail
     ? [
