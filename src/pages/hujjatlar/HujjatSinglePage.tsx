@@ -24,6 +24,7 @@ import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { usePermissions } from "@/features/auth/hooks/usePermissions";
+import { useNotificationStore } from "@/store/notificationStore";
 
 interface Hujjat {
   id: number;
@@ -132,6 +133,7 @@ const HujjatSinglePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { can } = usePermissions();
+  const refreshNotifications = useNotificationStore((state) => state.fetchSummary);
   const [data, setData] = useState<Hujjat | null>(null);
   const [loading, setLoading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -154,6 +156,7 @@ const HujjatSinglePage = () => {
       setLoading(true);
       const response = await api.get(API_ENDPOINTS.HUJJATLAR.DETAIL(id!));
       setData(response.data);
+      refreshNotifications();
     } catch (error) {
       console.error(error);
     } finally {

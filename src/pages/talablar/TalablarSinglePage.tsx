@@ -128,6 +128,7 @@ const TalablarSinglePage = () => {
       setLoading(true);
       const res = await api.get<TalabDetail>(API_ENDPOINTS.TALABLAR.DETAIL(id));
       setData(res.data);
+      refreshNotifications();
     } catch (error) {
       console.error("Failed to fetch talab", error);
       message.error("Talab ma'lumotini yuklab bo'lmadi");
