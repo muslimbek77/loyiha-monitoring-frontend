@@ -3,14 +3,27 @@ import { useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { useNotificationStore } from "@/store/notificationStore";
 
 const DashboardLayout = () => {
   const mainRef = useRef<HTMLElement | null>(null);
   const { pathname } = useLocation();
+  const fetchSummary = useNotificationStore((state) => state.fetchSummary);
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [pathname]);
+
+  useEffect(() => {
+    fetchSummary();
+    const intervalId = window.setInterval(() => {
+      fetchSummary();
+    }, 60000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [fetchSummary]);
 
   return (
     <div className="app-shell flex h-screen overflow-hidden">

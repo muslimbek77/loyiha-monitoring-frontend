@@ -11,7 +11,7 @@ import {
   Pin,
 } from "lucide-react";
 import { usePermissions } from "@/features/auth/hooks/usePermissions";
-import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useNotificationStore } from "@/store/notificationStore";
 
 type Permission =
   | "canManageUsers"
@@ -59,10 +59,18 @@ const navItems: {
 const Sidebar = () => {
   const location = useLocation();
   const { can } = usePermissions();
+  const sidebar = useNotificationStore((state) => state.summary?.sidebar);
 
   const visibleItems = navItems.filter(
     (item) => !item.permission || can(item.permission),
   );
+
+  const badgeMap: Record<string, number> = {
+    "/chats": sidebar?.chat ?? 0,
+    "/talablar": sidebar?.talablar ?? 0,
+    "/topshiriqlar": sidebar?.topshiriqlar ?? 0,
+    "/hujjatlar": sidebar?.hujjatlar ?? 0,
+  };
 
   return (
     <aside className="hidden h-screen w-[280px] shrink-0 border-r border-slate-200/70 bg-slate-950 text-slate-100 lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -95,6 +103,7 @@ const Sidebar = () => {
               path === "/"
                 ? location.pathname === "/"
                 : location.pathname.startsWith(path);
+            const badge = badgeMap[path] ?? 0;
 
             return (
               <Link
@@ -120,6 +129,11 @@ const Sidebar = () => {
                   <Icon size={18} className="opacity-90" />
                 </span>
                 <span className="font-medium">{label}</span>
+                {badge > 0 && (
+                  <span className="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-sky-400 px-2 py-0.5 text-[11px] font-semibold text-slate-950">
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
               </Link>
             );
           })}

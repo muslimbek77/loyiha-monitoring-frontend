@@ -141,7 +141,7 @@ const statusConfig: Record<
 // Status-based action guards
 const canQabulQilish = (status: string) => status === "yangi";
 const canRadEtish = (status: string) => status === "yangi";
-const canBajarish = (status: string) =>
+const canJavobYuborish = (status: string) =>
   status === "qabul_qilindi" || status === "jarayonda";
 
 const formatDate = (dateStr: string) =>
@@ -188,12 +188,11 @@ const TalabTable = ({
 
   const runAction = async (
     id: number,
-    action: "qabul_qilish" | "rad_etish" | "bajarish",
+    action: "qabul_qilish" | "rad_etish",
   ) => {
     const prompts = {
       qabul_qilish: "Talabni qabul qilasizmi?",
       rad_etish: "Talabni rad etasizmi?",
-      bajarish: "Talab bajarildi deb belgilansinmi?",
     };
 
     if (!window.confirm(prompts[action])) {
@@ -205,15 +204,12 @@ const TalabTable = ({
       const endpoint =
         action === "qabul_qilish"
           ? API_ENDPOINTS.TALABLAR.QABUL_QILISH(id)
-          : action === "rad_etish"
-            ? API_ENDPOINTS.TALABLAR.RAD_ETISH(id)
-            : API_ENDPOINTS.TALABLAR.BAJARISH(id);
+          : API_ENDPOINTS.TALABLAR.RAD_ETISH(id);
       const res = await api.post<Talab>(endpoint);
       onUpdateRecord?.(res.data);
       const labels = {
         qabul_qilish: "Talab qabul qilindi",
         rad_etish: "Talab rad etildi",
-        bajarish: "Talab bajarildi deb belgilandi",
       };
       notifApi.success({ message: labels[action], placement: "topRight" });
     } catch {
@@ -324,7 +320,7 @@ const TalabTable = ({
                         const hasAny =
                           canQabulQilish(record.status) ||
                           canRadEtish(record.status) ||
-                          canBajarish(record.status);
+                          canJavobYuborish(record.status);
 
                         return (
                           <tr
@@ -422,14 +418,13 @@ const TalabTable = ({
                                         className="!rounded-lg !border !border-red-200 !text-red-500 hover:!bg-red-50"
                                       />
                                     )}
-                                    {canBajarish(record.status) && (
+                                    {canJavobYuborish(record.status) && (
                                       <Button
                                         size="small"
                                         type="text"
-                                        title="Bajarildi deb belgilash"
-                                        loading={isLoadingKey(record.id, "bajarish")}
+                                        title="Javob yuborish"
                                         icon={<PlayCircleOutlined />}
-                                        onClick={() => runAction(record.id, "bajarish")}
+                                        onClick={() => navigate(`/talablar/${record.id}`)}
                                         className="!rounded-lg !border !border-green-200 !text-green-600 hover:!bg-green-50"
                                       />
                                     )}
