@@ -1,50 +1,16 @@
 import { Badge, Empty, Popover, Spin, Tag } from "antd";
 import { Bell, FileText, LogOut, UserCircle2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useAuthStore } from "@/store/authStore";
-import api from "@/services/api/axios";
-import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { useNavigate } from "react-router-dom";
-
-type NotificationItem = {
-  id: string;
-  title: string;
-  description: string;
-  path: string;
-  tag: string;
-  tone: string;
-};
-
-type TaskNotification = {
-  id: number;
-  mazmun: string;
-  bayonnoma_raqami?: string;
-  is_kechikkan?: boolean;
-  muddat?: string;
-};
-
-type TalabNotification = {
-  id: number;
-  mavzu: string;
-  status_display?: string;
-  ijrochi_boshqarma_nomi?: string;
-  is_kechikkan?: boolean;
-};
-
-type HujjatNotification = {
-  id: number;
-  nomi: string;
-  obyekt_nomi?: string;
-  boshqarma_nomi?: string;
-  holat_display?: string;
-};
+import { useNotificationStore } from "@/store/notificationStore";
 
 const Header = () => {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notifLoading, setNotifLoading] = useState(false);
+  const summary = useNotificationStore((state) => state.summary);
+  const notifLoading = useNotificationStore((state) => state.isLoading);
 
   const getInitials = (name?: string) => {
     if (!name) return "U";
@@ -56,75 +22,15 @@ const Header = () => {
     return name[0]?.toUpperCase() ?? "U";
   };
 
-  useEffect(() => {
-    if (!user) return;
-
-    let cancelled = false;
-
-    const fetchNotifications = async () => {
-      setNotifLoading(true);
-
-      try {
-        const [tasksRes, talablarRes, hujjatlarRes] = await Promise.allSettled([
-          api.get(API_ENDPOINTS.TOPSHIRIQLAR.MENING),
-          api.get(API_ENDPOINTS.TALABLAR.KELGAN),
-          api.get(API_ENDPOINTS.HUJJATLAR.KUTILMOQDA),
-        ]);
-
-        if (cancelled) return;
-
-        const taskItems: NotificationItem[] =
-          tasksRes.status === "fulfilled"
-            ? (tasksRes.value.data ?? []).slice(0, 6).map((item: TaskNotification) => ({
-                id: `task-${item.id}`,
-                title: item.mazmun,
-                description: item.bayonnoma_raqami
-                  ? `Bayonnoma ${item.bayonnoma_raqami}`
-                  : `Muddat: ${item.muddat || "-"}`,
-                path: `/topshiriqlar/${item.id}`,
-                tag: item.is_kechikkan ? "Kechikkan topshiriq" : "Topshiriq",
-                tone: item.is_kechikkan ? "red" : "blue",
-              }))
-            : [];
-
-        const talabItems: NotificationItem[] =
-          talablarRes.status === "fulfilled"
-            ? (talablarRes.value.data ?? []).slice(0, 6).map((item: TalabNotification) => ({
-                id: `talab-${item.id}`,
-                title: item.mavzu,
-                description: item.ijrochi_boshqarma_nomi || item.status_display || "Talab",
-                path: `/talablar/${item.id}`,
-                tag: item.is_kechikkan ? "Kechikkan talab" : "Talab",
-                tone: item.is_kechikkan ? "red" : "green",
-              }))
-            : [];
-
-        const hujjatItems: NotificationItem[] =
-          hujjatlarRes.status === "fulfilled"
-            ? (hujjatlarRes.value.data ?? []).slice(0, 6).map((item: HujjatNotification) => ({
-                id: `hujjat-${item.id}`,
-                title: item.nomi,
-                description: item.obyekt_nomi || item.boshqarma_nomi || "Tasdiqlash kutilmoqda",
-                path: `/hujjatlar/${item.id}`,
-                tag: item.holat_display || "Hujjat",
-                tone: "gold",
-              }))
-            : [];
-
-        setNotifications([...taskItems, ...talabItems, ...hujjatItems].slice(0, 12));
-      } finally {
-        if (!cancelled) setNotifLoading(false);
-      }
-    };
-
-    fetchNotifications();
-    const intervalId = window.setInterval(fetchNotifications, 60000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [user]);
+  const notifications = useMemo(
+    () => [
+      ...(summary?.sections.chat.items ?? []),
+      ...(summary?.sections.talablar.items ?? []),
+      ...(summary?.sections.topshiriqlar.items ?? []),
+      ...(summary?.sections.hujjatlar.items ?? []),
+    ].slice(0, 12),
+    [summary],
+  );
 
   const notificationPanel = useMemo(
     () => (
@@ -132,7 +38,7 @@ const Header = () => {
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm font-semibold text-slate-900">Bildirishnomalar</p>
           <Tag color="blue" className="mr-0 rounded-full">
-            {notifications.length}
+            {summary?.total_unread ?? 0}
           </Tag>
         </div>
 
@@ -164,7 +70,7 @@ const Header = () => {
                     {item.description}
                   </p>
                   <Tag color={item.tone} className="mr-0 shrink-0 rounded-full text-[10px]">
-                    {item.tag}
+                    {item.section}
                   </Tag>
                 </div>
               </button>
@@ -195,7 +101,7 @@ const Header = () => {
               arrow={false}
             >
               <button className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:text-sky-600 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-                <Badge count={notifications.length} size="small" offset={[2, -2]}>
+                <Badge count={summary?.total_unread ?? 0} size="small" offset={[2, -2]}>
                   <Bell className="h-5 w-5" />
                 </Badge>
               </button>

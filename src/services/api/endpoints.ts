@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
 
   DASHBOARD: {
     STATS: "/analytics/dashboard/",
+    NOTIFICATIONS: "/analytics/notifications/summary/",
     REYTING: "/analytics/reyting/",
     XARITA: "/analytics/xarita/",
     MOLIYA: "/analytics/moliya/",
@@ -113,7 +114,9 @@ export const API_ENDPOINTS = {
     YUBORGAN: "/talablar/yuborgan/",
     QABUL_QILISH: (id: string | number) => `/talablar/${id}/qabul_qilish/`,
     BAJARISH: (id: string | number) => `/talablar/${id}/bajarish/`,
+    JAVOB_YUBORISH: (id: string | number) => `/talablar/${id}/javob_yuborish/`,
     RAD_ETISH: (id: string | number) => `/talablar/${id}/rad_etish/`,
+    YOPISH: (id: string | number) => `/talablar/${id}/yopish/`,
     STATUS_OZGARTIRISH: (id: string | number) =>
       `/talablar/${id}/status_ozgartirish/`,
     IZOH_QOSHISH: (id: string | number) => `/talablar/${id}/izoh_qoshish/`,

@@ -32,6 +32,21 @@ type DashboardStats = {
   eng_yomon_boshqarma: string | null;
   eng_yomon_boshqarma_id?: number | null;
   ai_xulosa: string;
+  intizom_nazorati?: {
+    kechikkan_talablar_soni: number;
+    kechikkan_topshiriqlar_soni: number;
+    kechikkan_talablar: DisciplineItem[];
+    kechikkan_topshiriqlar: DisciplineItem[];
+  };
+};
+
+type DisciplineItem = {
+  id: number;
+  title: string;
+  subtitle: string;
+  muddat: string;
+  days_overdue: number;
+  path: string;
 };
 
 type ReytingItem = {
@@ -351,6 +366,92 @@ const DashboardPage = () => {
           />
         ))}
       </section>
+
+      {canManageAi && stats.intizom_nazorati && (
+        <section className="grid gap-6 xl:grid-cols-2">
+          <div className="section-card p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="page-kicker">Talab intizomi</p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                  Muddati o'tgan talablar
+                </h2>
+              </div>
+              <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-700">
+                {stats.intizom_nazorati.kechikkan_talablar_soni}
+              </span>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {stats.intizom_nazorati.kechikkan_talablar.length ? (
+                stats.intizom_nazorati.kechikkan_talablar.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => navigate(item.path)}
+                    className="flex w-full items-start justify-between gap-4 rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-3 text-left transition hover:border-rose-200"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                      <p className="mt-1 text-xs text-slate-500">{item.subtitle}</p>
+                      <p className="mt-2 text-xs text-rose-700">
+                        Muddat: {formatDate(item.muddat)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-700">
+                      {item.days_overdue} kun
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500">
+                  Kechikkan talablar topilmadi.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="section-card p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="page-kicker">Topshiriq intizomi</p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                  Kechikkan topshiriqlar
+                </h2>
+              </div>
+              <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
+                {stats.intizom_nazorati.kechikkan_topshiriqlar_soni}
+              </span>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {stats.intizom_nazorati.kechikkan_topshiriqlar.length ? (
+                stats.intizom_nazorati.kechikkan_topshiriqlar.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => navigate(item.path)}
+                    className="flex w-full items-start justify-between gap-4 rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-left transition hover:border-amber-200"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                      <p className="mt-1 text-xs text-slate-500">{item.subtitle}</p>
+                      <p className="mt-2 text-xs text-amber-700">
+                        Muddat: {formatDate(item.muddat)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700">
+                      {item.days_overdue} kun
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500">
+                  Kechikkan topshiriqlar topilmadi.
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-6 xl:grid-cols-[1.25fr_0.95fr]">
         <div className="section-card p-6">
