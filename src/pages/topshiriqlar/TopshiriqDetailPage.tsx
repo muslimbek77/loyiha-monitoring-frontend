@@ -16,6 +16,7 @@ import {
 } from "@ant-design/icons";
 import api from "@/services/api/axios";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { useNotificationStore } from "@/store/notificationStore";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 const statusConfig = {
@@ -207,6 +208,7 @@ const ChatCommentBox = ({ taskData, onSuccess }) => {
 const TopshiriqDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const refreshNotifications = useNotificationStore((state) => state.fetchSummary);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
@@ -216,6 +218,7 @@ const TopshiriqDetailPage = () => {
       setLoading(true);
       const res = await api.get(`${API_ENDPOINTS.TOPSHIRIQLAR.LIST}${id}/`);
       setData(res.data);
+      refreshNotifications();
     } catch (err) {
       console.error(err);
     } finally {
