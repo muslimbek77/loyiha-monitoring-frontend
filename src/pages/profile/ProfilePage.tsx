@@ -26,6 +26,8 @@ const ProfilePage = () => {
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
+    username: "",
+    pnfl: "",
     fio: "",
     telefon: "",
     telegram_id: "",
@@ -140,6 +142,8 @@ const ProfilePage = () => {
 
   const handleEditProfile = () => {
     setProfileForm({
+      username: user.username || "",
+      pnfl: user.pnfl || "",
       fio: user.fio || "",
       telefon: user.telefon || "",
       telegram_id: user.telegram_id || "",
@@ -154,7 +158,13 @@ const ProfilePage = () => {
     setMessage(null);
 
     try {
-      await api.put(API_ENDPOINTS.USERS.PROFILE, profileForm);
+      await api.put(API_ENDPOINTS.USERS.PROFILE, {
+        username: profileForm.username,
+        pnfl: profileForm.pnfl,
+        fio: profileForm.fio,
+        telefon: profileForm.telefon,
+        telegram_id: profileForm.telegram_id,
+      });
       await fetchUser();
 
       setMessage({

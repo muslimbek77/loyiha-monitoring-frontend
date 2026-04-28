@@ -300,6 +300,16 @@ const HujjatlarPage = () => {
   const handleCreateHujjat = async () => {
     try {
       const values = await form.validateFields();
+      const files = values.fayl?.fileList ?? [];
+      if (files.length === 0) {
+        message.error("Kamida bitta fayl tanlang");
+        return;
+      }
+      if (files.length > 100) {
+        message.error("Bir martada ko'pi bilan 100 ta fayl yuklash mumkin");
+        return;
+      }
+
       const formData = new FormData();
       formData.append("obyekt", values.obyekt);
       formData.append("kategoriya", values.kategoriya);
@@ -308,13 +318,19 @@ const HujjatlarPage = () => {
       formData.append("izoh", values.izoh || "");
       formData.append("boshqarma", values.boshqarma);
       formData.append("korinish", values.korinish || "rahbariyat_va_boshqarma");
-      if (values.fayl?.fileList?.length > 0) {
-        formData.append("fayl", values.fayl.fileList[0].originFileObj);
+      for (const file of files) {
+        if (file.originFileObj) {
+          formData.append("fayl", file.originFileObj);
+        }
       }
       await api.post(API_ENDPOINTS.HUJJATLAR.LIST, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      message.success("Hujjat muvaffaqiyatli qo'shildi");
+      message.success(
+        files.length === 1
+          ? "Hujjat muvaffaqiyatli qo'shildi"
+          : `${files.length} ta hujjat muvaffaqiyatli qo'shildi`,
+      );
       setIsModalOpen(false);
       form.resetFields();
       fetchHujjatlarData(page, filters);
@@ -733,12 +749,12 @@ const HujjatlarPage = () => {
 
           <Form.Item
             name="fayl"
-            label={<FieldLabel>Fayl yuklash</FieldLabel>}
+            label={<FieldLabel>Fayllar yuklash</FieldLabel>}
             valuePropName="file"
           >
-            <Upload beforeUpload={() => false} maxCount={1}>
+            <Upload beforeUpload={() => false} multiple maxCount={100}>
               <Button icon={<UploadOutlined />} className="rounded-lg">
-                Fayl tanlash
+                100 tagacha fayl tanlash
               </Button>
             </Upload>
           </Form.Item>
